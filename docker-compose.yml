@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: koyla-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-koyla}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-pgvector.sql:/docker-entrypoint-initdb.d/init-pgvector.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d koyla"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: koyla-backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/koyla
+      - SECRET_KEY=${SECRET_KEY:-dev_secret_key_change_in_production_1234567890}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=480
+      - EMBEDDING_PROVIDER=sentence_transformers
+      - NEURAL_MODEL_NAME=BAAI/bge-small-en-v1.5
+      - NEURAL_MODEL_PATH=/app/model_cache/BAAI/bge-small-en-v1.5
+      - LLM_PROVIDER=ollama
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=SmolLM2-135M-Instruct
+      - LOCAL_MODEL_PATH=/app/model_cache/SmolLM2-135M-Instruct
+      - LOCAL_MODEL_NAME=SmolLM2-135M-Instruct
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+      - ./backend/model_cache:/app/model_cache:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "python scripts/migrate.py &&
+             python scripts/seed.py &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: koyla-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+    driver: local

@@ -1,0 +1,95 @@
+@import "tailwindcss";
+@source "./**/*.{js,ts,jsx,tsx}";
+@source "../index.html";
+
+@theme {
+  --color-coal-pitch: #0c0e12;
+  --color-coal-dark: #12151b;
+  --color-coal-surface: #181d24;
+  --color-coal-card: #202630;
+  --color-graphite-border: #2c3543;
+  --color-hairline: #374151;
+  
+  --color-paper-light: #f7f9fb;
+  --color-paper-subtle: #edf1f5;
+  --color-paper-border: #d2d8e0;
+  
+  --color-ore-copper: #9c5828;
+  --color-ore-copper-dark: #7b431e;
+  --color-industrial-blue: #1b365d;
+  --color-industrial-blue-light: #24487b;
+}
+
+body {
+  background-color: #0f1318;
+  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle Technical Survey Grid */
+.bg-survey-grid {
+  background-color: #0d1014;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bg-survey-grid-light {
+  background-color: #f6f8fa;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Engineering Blueprint Grid Placeholder */
+.bg-blueprint-grid {
+  background-color: #0e2238;
+  background-image: 
+    linear-gradient(to right, rgba(100, 160, 230, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100, 160, 230, 0.12) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Technical Drafting Corner Crosshairs */
+.technical-frame {
+  position: relative;
+}
+.technical-frame::before {
+  content: "+";
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #64748b;
+  pointer-events: none;
+}
+.technical-frame::after {
+  content: "+";
+  position: absolute;
+  bottom: -8px;
+  right: -4px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+/* Custom Scrollbar for dense technical views */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #12161c;
+}
+::-webkit-scrollbar-thumb {
+  background: #2d3748;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4a5568;
+}
