@@ -1,9 +1,6 @@
-version: '3.8'
-
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: koyla-postgres
     restart: always
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-koyla}
@@ -24,25 +21,31 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: koyla-backend
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/koyla
       - SECRET_KEY=${SECRET_KEY:-dev_secret_key_change_in_production_1234567890}
       - ACCESS_TOKEN_EXPIRE_MINUTES=480
-      - EMBEDDING_PROVIDER=sentence_transformers
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-sentence_transformers}
       - NEURAL_MODEL_NAME=BAAI/bge-small-en-v1.5
       - NEURAL_MODEL_PATH=/app/model_cache/BAAI/bge-small-en-v1.5
       - LLM_PROVIDER=ollama
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=SmolLM2-135M-Instruct
       - LOCAL_MODEL_PATH=/app/model_cache/SmolLM2-135M-Instruct
       - LOCAL_MODEL_NAME=SmolLM2-135M-Instruct
+      - TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE:-0}
+      - HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-0}
+      - OFFLINE_MODE=${OFFLINE_MODE:-0}
     ports:
       - "8000:8000"
     volumes:
       - ./storage:/app/storage
       - ./backend/model_cache:/app/model_cache:ro
+      - reports_data:/app/app/data/reports
+      - hf_cache:/root/.cache/huggingface
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,7 +58,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: koyla-frontend
     restart: always
     ports:
       - "5173:5173"
@@ -64,4 +66,8 @@ services:
 
 volumes:
   pgdata:
+    driver: local
+  reports_data:
+    driver: local
+  hf_cache:
     driver: local

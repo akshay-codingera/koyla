@@ -46,8 +46,25 @@ class LocalCrossEncoderReranker(Reranker):
             return
         self._load_attempted = True
         try:
+            import os
             from sentence_transformers import CrossEncoder
-            self._model = CrossEncoder(self.model_name)
+            from app.core.config import settings
+
+            is_offline = (
+                os.environ.get("TRANSFORMERS_OFFLINE") in ("1", "true", "True") or
+                os.environ.get("HF_HUB_OFFLINE") in ("1", "true", "True") or
+                bool(getattr(settings, "TRANSFORMERS_OFFLINE", False)) or
+                bool(getattr(settings, "HF_HUB_OFFLINE", False)) or
+                bool(getattr(settings, "OFFLINE_MODE", False))
+            )
+
+            if is_offline:
+                self._model = CrossEncoder(self.model_name, local_files_only=True)
+            else:
+                try:
+                    self._model = CrossEncoder(self.model_name, local_files_only=True)
+                except Exception:
+                    self._model = CrossEncoder(self.model_name)
             logger.info(f"Loaded local CrossEncoder reranker: {self.model_name}")
         except Exception as e:
             self._load_error = str(e)

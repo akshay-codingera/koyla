@@ -515,8 +515,9 @@ class QAService:
                 snippets.append(f"[{idx}] *\"{snippet}...\"* (Source: *{r.get('title')}*, {t_str})")
             sections.append("**Retrieved Source Evidence:**\n" + "\n".join(snippets))
 
+        ollama_url = getattr(settings, "OLLAMA_BASE_URL", "http://localhost:11434")
         sections.append(
-            "\n*(Notice: Local LLM service is offline or unreachable at http://localhost:11434. "
+            f"\n*(Notice: Local LLM service is offline or unreachable at {ollama_url}. "
             "Evidence records and verified calculations above are compiled deterministically.)*"
         )
 

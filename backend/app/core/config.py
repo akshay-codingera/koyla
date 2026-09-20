@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     EMBEDDING_VERSION: str = "1.1.0"
     EMBEDDING_BATCH_SIZE: int = 32
 
+    # Offline / Air-Gapped Controls
+    TRANSFORMERS_OFFLINE: bool = False
+    HF_HUB_OFFLINE: bool = False
+    OFFLINE_MODE: bool = False
+
     # Phase 5: Hybrid Retrieval & RRF Settings
     RRF_K: int = 60
     RRF_KEYWORD_WEIGHT: float = 1.0

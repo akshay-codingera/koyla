@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import logging
 from typing import List, Dict, Any, Optional
@@ -15,7 +15,11 @@ class LocalLLMExtractionProvider(BaseExtractionProvider):
     """
 
     def __init__(self, endpoint_url: Optional[str] = None, model_name: Optional[str] = None):
-        self.endpoint_url = endpoint_url or os.getenv("LOCAL_LLM_URL", "http://localhost:11434/api/generate")
+        if not endpoint_url:
+            from app.core.config import settings
+            base_url = (getattr(settings, "OLLAMA_BASE_URL", None) or "http://localhost:11434").rstrip("/")
+            endpoint_url = os.getenv("LOCAL_LLM_URL", f"{base_url}/api/generate")
+        self.endpoint_url = endpoint_url
         self.model_name = model_name or os.getenv("LOCAL_LLM_MODEL", "mistral:7b")
         self.timeout_seconds = float(os.getenv("LOCAL_LLM_TIMEOUT", "5.0"))
 

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.database import get_db
 from app.api.deps import get_current_active_user
 from app.models.user import User
@@ -1019,13 +1020,15 @@ def generate_analysis_summary(
     llm_summary = None
     try:
         prompt_data = f"Document Count: {analysis.document_count}. Periods: {period_span}. Topics: {len(topics)}. Emerging: {emerging_names}. Declining: {declining_names}. Persistent: {persistent_count}."
+        base_url = (getattr(settings, "OLLAMA_BASE_URL", None) or "http://localhost:11434").rstrip("/")
+        model_name = getattr(settings, "OLLAMA_MODEL", "SmolLM2-135M-Instruct")
         llm_payload = {
-            "model": "SmolLM2-135M-Instruct",
+            "model": model_name,
             "prompt": f"You are KOYLA technical reporter. Write exactly 2-3 objective, non-speculative sentences summarizing these coal reporting facts. Do not guess causes or make recommendations:\n{prompt_data}\nSummary:",
             "stream": False,
         }
         req_obj = urllib.request.Request(
-            "http://localhost:11434/api/generate",
+            f"{base_url}/api/generate",
             data=json.dumps(llm_payload).encode("utf-8"),
             headers={"Content-Type": "application/json"},
         )

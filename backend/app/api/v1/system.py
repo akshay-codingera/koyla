@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from sqlalchemy import text
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -49,8 +50,9 @@ def health_check(db: Session = Depends(get_db)):
     except Exception:
         emb_status = "DOWN"
 
-    # 5. Local LLM Service check (Ollama endpoint on localhost:11434)
-    llm_endpoint = "http://localhost:11434/api/tags"
+    # 5. Local LLM Service check (Ollama endpoint on configured base URL)
+    base_url = (getattr(settings, "OLLAMA_BASE_URL", None) or "http://localhost:11434").rstrip("/")
+    llm_endpoint = f"{base_url}/api/tags"
     try:
         req = urllib.request.Request(llm_endpoint, headers={"User-Agent": "KOYLA-Health/1.0"})
         with urllib.request.urlopen(req, timeout=0.5) as resp:

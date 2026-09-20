@@ -40,14 +40,15 @@ class LocalSentenceTransformerProvider(EmbeddingProvider):
             candidates.append(env_path)
 
         # Standard container path
-        candidates.append("/app/model_cache/BAAI/bge-small-en-v1.5")
+        candidates.append(f"/app/model_cache/{self._model_name}")
         
         # Local workspace paths relative to this file
         curr_dir = os.path.dirname(os.path.abspath(__file__))
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(curr_dir)))
-        candidates.append(os.path.join(base_dir, "backend", "model_cache", "BAAI", "bge-small-en-v1.5"))
-        candidates.append(os.path.join(base_dir, "model_cache", "BAAI", "bge-small-en-v1.5"))
-        candidates.append("backend/model_cache/BAAI/bge-small-en-v1.5")
+        model_subpath = os.path.join(*self._model_name.split("/"))
+        candidates.append(os.path.join(base_dir, "backend", "model_cache", model_subpath))
+        candidates.append(os.path.join(base_dir, "model_cache", model_subpath))
+        candidates.append(os.path.join("backend", "model_cache", model_subpath))
 
         for c in candidates:
             if c and os.path.exists(c):
@@ -65,10 +66,33 @@ class LocalSentenceTransformerProvider(EmbeddingProvider):
             import gc
             gc.collect()
             from sentence_transformers import SentenceTransformer
+            from app.core.config import settings
+
             load_target = self._resolve_model_path()
             self._resolved_path = load_target
-            logger.info(f"Loading local SentenceTransformer model from: {load_target}")
-            self._model = SentenceTransformer(load_target)
+
+            is_offline = (
+                os.environ.get("TRANSFORMERS_OFFLINE") in ("1", "true", "True") or
+                os.environ.get("HF_HUB_OFFLINE") in ("1", "true", "True") or
+                bool(getattr(settings, "TRANSFORMERS_OFFLINE", False)) or
+                bool(getattr(settings, "HF_HUB_OFFLINE", False)) or
+                bool(getattr(settings, "OFFLINE_MODE", False))
+            )
+
+            logger.info(f"Loading SentenceTransformer model target: {load_target} (offline_mode={is_offline})")
+
+            if is_offline:
+                # In offline mode, strictly use local files; fail immediately without network retries
+                self._model = SentenceTransformer(load_target, local_files_only=True)
+            else:
+                # In online mode, attempt loading from persistent local cache first to avoid remote HEAD requests
+                try:
+                    self._model = SentenceTransformer(load_target, local_files_only=True)
+                    logger.info(f"Loaded {self._model_name} from local cache without remote check.")
+                except Exception:
+                    logger.info(f"Model not found in local cache; downloading {self._model_name} from Hugging Face Hub...")
+                    self._model = SentenceTransformer(load_target)
+
             self._load_error = None
             logger.info(f"Successfully loaded neural SentenceTransformer: {self._model_name} from {load_target}")
         except Exception as e:
