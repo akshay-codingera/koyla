@@ -10,6 +10,7 @@ import app.models.audit
 import app.models.system
 import app.models.report
 import app.models.topic
+import app.models.visual
 
 Base.metadata.create_all(bind=engine)
 
@@ -29,6 +30,7 @@ from app.api.v1 import (
     qa,
     reports,
     topics,
+    visuals,
 )
 
 app = FastAPI(title=settings.PROJECT_NAME)
@@ -56,6 +58,7 @@ app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=[
 app.include_router(qa.router, prefix=f"{settings.API_V1_STR}/qa", tags=["qa"])
 app.include_router(reports.router, prefix=f"{settings.API_V1_STR}/reports", tags=["reports"])
 app.include_router(topics.router, prefix=f"{settings.API_V1_STR}/topics", tags=["topics"])
+app.include_router(visuals.router, prefix=f"{settings.API_V1_STR}/visuals", tags=["visuals"])
 
 @app.get("/")
 def root():

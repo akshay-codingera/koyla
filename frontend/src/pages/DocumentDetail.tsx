@@ -19,7 +19,8 @@ import {
   RefreshCw,
   ShieldCheck,
   Eye,
-  Tag
+  Tag,
+  ImageIcon
 } from 'lucide-react';
 
 interface DocumentDetailData {
@@ -116,6 +117,23 @@ interface ChunkItem {
   metadata: any;
 }
 
+interface VisualItem {
+  id: string;
+  page_number: number;
+  visual_type: string;
+  classification_confidence: number;
+  extraction_method: string;
+  figure_number: string | null;
+  caption: string | null;
+  ocr_confidence: number | null;
+  verification_status: string;
+  width_px: number | null;
+  height_px: number | null;
+  bbox: { x0: number; y0: number; x1: number; y1: number } | null;
+  image_hash: string;
+  created_at: string | null;
+}
+
 interface ExtractedFieldItem {
   id: string;
   field_name: string;
@@ -163,8 +181,10 @@ export const DocumentDetail: React.FC = () => {
   const [fields, setFields] = useState<ExtractedFieldItem[]>([]);
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [evidenceModalField, setEvidenceModalField] = useState<ExtractedFieldItem | null>(null);
+  const [visuals, setVisuals] = useState<VisualItem[]>([]);
+  const [selectedVisual, setSelectedVisual] = useState<VisualItem | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'metadata' | 'pages' | 'tables' | 'chunks' | 'extraction' | 'validation' | 'job'>('pages');
+  const [activeTab, setActiveTab] = useState<'metadata' | 'pages' | 'tables' | 'figures' | 'chunks' | 'extraction' | 'validation' | 'job'>('pages');
   const [tableView, setTableView] = useState<'logical' | 'physical'>('logical');
   const [selectedPageIndex, setSelectedPageIndex] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -219,6 +239,14 @@ export const DocumentDetail: React.FC = () => {
         setPages(pagesRes.data);
         setTables(tablesRes.data);
         setChunks(chunksRes.data);
+
+        // Fetch visual assets (Phase 9)
+        try {
+          const visualsRes = await apiClient.get('/visuals/document/' + id);
+          setVisuals(visualsRes.data?.visuals || []);
+        } catch {
+          setVisuals([]);
+        }
 
         // Apply URL parameter target navigation (Topic Evidence provenance)
         if (pageParam) {
@@ -390,6 +418,14 @@ export const DocumentDetail: React.FC = () => {
           }`}
         >
           <TableIcon className="w-4 h-4" /> Extracted Tables ({tables.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('figures')}
+          className={`pb-3 border-b-2 flex items-center gap-2 transition-colors ${
+            activeTab === 'figures' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <ImageIcon className="w-4 h-4" /> Figures ({visuals.length})
         </button>
         <button
           onClick={() => setActiveTab('chunks')}
@@ -647,6 +683,158 @@ export const DocumentDetail: React.FC = () => {
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* Tab: Figures (Phase 9 — Visual & Figure Intelligence) */}
+      {activeTab === 'figures' && (
+        <div className="space-y-4">
+          {visuals.length === 0 ? (
+            <div className="p-8 bg-white rounded border border-gray-200 text-center text-gray-500">
+              No visual assets detected in this document.
+            </div>
+          ) : (
+            <>
+              <div className="text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded p-3">
+                <strong>Visual &amp; Figure Intelligence:</strong> Detected figures, charts, maps, and technical drawings are extracted with deterministic heuristics. Classification may be UNKNOWN when evidence is insufficient — this is the correct safe output.
+              </div>
+              <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-700">Figure</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-700">Type</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-700">Caption</th>
+                      <th className="text-center px-4 py-3 font-semibold text-gray-700">Page</th>
+                      <th className="text-center px-4 py-3 font-semibold text-gray-700">Confidence</th>
+                      <th className="text-center px-4 py-3 font-semibold text-gray-700">Status</th>
+                      <th className="text-center px-4 py-3 font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visuals.map((v, idx) => (
+                      <tr key={v.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-4 py-3 font-medium text-gray-800">
+                          {v.figure_number || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
+                            v.visual_type === 'UNKNOWN' ? 'bg-gray-100 text-gray-600' :
+                            v.visual_type === 'MAP' ? 'bg-green-100 text-green-800' :
+                            v.visual_type === 'CHART' || v.visual_type === 'PLOT' ? 'bg-blue-100 text-blue-800' :
+                            v.visual_type === 'PHOTOGRAPH' ? 'bg-purple-100 text-purple-800' :
+                            v.visual_type === 'BOREHOLE_LOG' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-orange-100 text-orange-800'
+                          }`}>
+                            {v.visual_type.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={v.caption || ''}>
+                          {v.caption || <span className="text-gray-400 italic">No caption detected</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center text-gray-700">{v.page_number}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`text-xs font-semibold ${
+                            v.classification_confidence >= 0.7 ? 'text-green-700' :
+                            v.classification_confidence >= 0.4 ? 'text-yellow-700' : 'text-red-600'
+                          }`}>
+                            {(v.classification_confidence * 100).toFixed(0)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
+                            v.verification_status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
+                            v.verification_status === 'REVIEW_REQUIRED' ? 'bg-red-100 text-red-700' :
+                            v.verification_status === 'REJECTED' ? 'bg-gray-200 text-gray-600' :
+                            'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {v.verification_status.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center space-x-2">
+                          <button onClick={() => setSelectedVisual(v)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700" title="View figure detail">
+                            <Eye className="w-3 h-3 inline mr-1" />View
+                          </button>
+                          <button
+                            onClick={() => {
+                              const pageIdx = pages.findIndex(p => p.page_number === v.page_number);
+                              if (pageIdx >= 0) { setSelectedPageIndex(pageIdx); setActiveTab('pages'); }
+                            }}
+                            className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700" title="View source page"
+                          >
+                            Source
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Visual Detail Modal */}
+      {selectedVisual && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedVisual(null)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-800">
+                {selectedVisual.figure_number || 'Visual Asset'}
+                <span className="ml-2 text-sm font-normal text-gray-500">({selectedVisual.visual_type.replace(/_/g, ' ')})</span>
+              </h3>
+              <button onClick={() => setSelectedVisual(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            </div>
+            <div className="mb-4 bg-gray-100 rounded border flex items-center justify-center p-2 min-h-[200px]">
+              <img
+                src={`/api/v1/visuals/${selectedVisual.id}/content${localStorage.getItem('token') ? `?token=${encodeURIComponent(localStorage.getItem('token') || '')}` : ''}`}
+                alt={selectedVisual.caption || 'Extracted visual'}
+                className="max-w-full max-h-[400px] object-contain"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+              <div><span className="text-gray-500">Type:</span> <span className="font-semibold">{selectedVisual.visual_type.replace(/_/g, ' ')}</span></div>
+              <div><span className="text-gray-500">Page:</span> <span className="font-semibold">{selectedVisual.page_number}</span></div>
+              <div><span className="text-gray-500">Classification Confidence:</span> <span className="font-semibold">{(selectedVisual.classification_confidence * 100).toFixed(1)}%</span></div>
+              <div><span className="text-gray-500">Extraction:</span> <span className="font-semibold">{selectedVisual.extraction_method}</span></div>
+              <div><span className="text-gray-500">Dimensions:</span> <span className="font-semibold">{selectedVisual.width_px}&times;{selectedVisual.height_px} px</span></div>
+              <div><span className="text-gray-500">Status:</span>
+                <span className={`ml-1 inline-block px-2 py-0.5 rounded text-xs font-semibold ${
+                  selectedVisual.verification_status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
+                  selectedVisual.verification_status === 'REVIEW_REQUIRED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                }`}>{selectedVisual.verification_status.replace(/_/g, ' ')}</span>
+              </div>
+              {selectedVisual.ocr_confidence !== null && (
+                <div><span className="text-gray-500">OCR Confidence:</span> <span className="font-semibold">{(selectedVisual.ocr_confidence * 100).toFixed(1)}%</span></div>
+              )}
+              <div><span className="text-gray-500">Hash:</span> <span className="font-mono text-xs">{selectedVisual.image_hash?.substring(0, 16)}…</span></div>
+            </div>
+            {selectedVisual.caption && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                <div className="text-xs font-semibold text-blue-700 mb-1">Caption</div>
+                <div className="text-sm text-gray-800">{selectedVisual.caption}</div>
+              </div>
+            )}
+            {selectedVisual.bbox && (
+              <div className="mb-4 p-3 bg-gray-50 border rounded">
+                <div className="text-xs font-semibold text-gray-600 mb-1">Bounding Region (PDF Points)</div>
+                <div className="text-xs font-mono text-gray-700">
+                  x0={selectedVisual.bbox.x0.toFixed(1)}, y0={selectedVisual.bbox.y0.toFixed(1)}, x1={selectedVisual.bbox.x1.toFixed(1)}, y1={selectedVisual.bbox.y1.toFixed(1)}
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  const pageIdx = pages.findIndex(p => p.page_number === selectedVisual.page_number);
+                  if (pageIdx >= 0) { setSelectedPageIndex(pageIdx); setActiveTab('pages'); setSelectedVisual(null); }
+                }}
+                className="px-4 py-2 bg-gray-700 text-white rounded text-sm hover:bg-gray-800"
+              >View Source Page</button>
+              <button onClick={() => setSelectedVisual(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">Close</button>
+            </div>
+          </div>
         </div>
       )}
 

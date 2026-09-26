@@ -1,15 +1,25 @@
 import traceback
+import hashlib
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.document import Document, ProcessingJob, DocumentPage, Table, TableRow
 from app.models.chunk import Chunk
 from app.models.verification import VerificationTask
+from app.models.visual import VisualAsset
 from app.services.parsers import get_parser_for_file
+from app.services.parsers.ocr_parser import ocr_parser
 from app.services.chunking import chunking_service
 from app.services.table_intelligence import table_intelligence_service
 from app.services.extraction.pipeline import ExtractionPipeline
 from app.services.audit import log_audit_event
+from app.services.storage import storage_service
+from app.core.config import settings
+from PIL import Image
+import io
+import logging
+
+logger = logging.getLogger(__name__)
 
 def process_document(document_id: str, job_id: str):
     """
@@ -65,6 +75,121 @@ def process_document(document_id: str, job_id: str):
                     review_notes=f"Low OCR confidence score ({page.confidence}) on Page {page.page_number} requiring human verification"
                 )
                 db.add(verification_task)
+        
+        db.flush()  # flush pages so db_page.id is available for visual FK
+
+        # 2.5 Phase 9: Visual Detection, OCR & Persistence
+        visual_count = 0
+        for page in parsed_doc.pages:
+            if not page.visuals:
+                continue
+            
+            # Find the persisted DocumentPage for this page number
+            db_page = db.query(DocumentPage).filter(
+                DocumentPage.document_id == doc.id,
+                DocumentPage.page_number == page.page_number,
+            ).first()
+            if not db_page:
+                continue
+            
+            for parsed_visual in page.visuals:
+                try:
+                    if not parsed_visual.image_bytes:
+                        continue
+                    
+                    # Compute image hash
+                    image_hash = hashlib.sha256(parsed_visual.image_bytes).hexdigest()
+                    
+                    # Save image via StorageService
+                    import uuid as _uuid
+                    visual_id = str(_uuid.uuid4())
+                    visual_filename = f"visuals/{visual_id}.png"
+                    file_path, _, _ = storage_service.save_bytes(
+                        data=parsed_visual.image_bytes,
+                        filename=visual_filename,
+                        organization_id=doc.organization_id,
+                        document_id=doc.id,
+                    )
+                    
+                    # Run OCR on visual region
+                    raw_ocr = None
+                    normalized_ocr = None
+                    ocr_conf = None
+                    try:
+                        pil_img = Image.open(io.BytesIO(parsed_visual.image_bytes))
+                        ocr_text, avg_conf, success = ocr_parser.ocr_image(pil_img)
+                        if success and ocr_text.strip():
+                            raw_ocr = ocr_text
+                            # Basic normalization: collapse whitespace, strip
+                            normalized_ocr = " ".join(ocr_text.split()).strip()
+                            ocr_conf = avg_conf
+                    except Exception as ocr_err:
+                        logger.warning(f"Visual OCR failed for page {page.page_number}: {ocr_err}")
+                    
+                    # Determine verification status
+                    verification_status = "PENDING"
+                    needs_review = False
+                    if (parsed_visual.classification_confidence < settings.VISUAL_CLASSIFICATION_CONFIDENCE_MIN):
+                        verification_status = "REVIEW_REQUIRED"
+                        needs_review = True
+                    if ocr_conf is not None and ocr_conf < settings.VISUAL_OCR_CONFIDENCE_MIN:
+                        verification_status = "REVIEW_REQUIRED"
+                        needs_review = True
+                    
+                    visual_asset = VisualAsset(
+                        id=visual_id,
+                        document_id=doc.id,
+                        page_id=db_page.id,
+                        page_number=page.page_number,
+                        visual_type=parsed_visual.visual_type,
+                        classification_confidence=parsed_visual.classification_confidence,
+                        classification_method=parsed_visual.classification_method,
+                        bbox_json=parsed_visual.bbox,
+                        file_path=file_path,
+                        image_hash=image_hash,
+                        width_px=parsed_visual.width_px,
+                        height_px=parsed_visual.height_px,
+                        extraction_method=parsed_visual.extraction_method,
+                        figure_number=parsed_visual.figure_number,
+                        caption=parsed_visual.caption,
+                        raw_ocr_text=raw_ocr,
+                        normalized_ocr_text=normalized_ocr,
+                        ocr_confidence=ocr_conf,
+                        verification_status=verification_status,
+                        metadata_json=parsed_visual.metadata,
+                    )
+                    db.add(visual_asset)
+                    visual_count += 1
+                    
+                    # Create verification task if needed
+                    if needs_review:
+                        review_notes_parts = []
+                        if parsed_visual.classification_confidence < settings.VISUAL_CLASSIFICATION_CONFIDENCE_MIN:
+                            review_notes_parts.append(
+                                f"Low classification confidence ({parsed_visual.classification_confidence:.2f}) "
+                                f"for visual type '{parsed_visual.visual_type}'"
+                            )
+                        if ocr_conf is not None and ocr_conf < settings.VISUAL_OCR_CONFIDENCE_MIN:
+                            review_notes_parts.append(
+                                f"Low visual OCR confidence ({ocr_conf:.2f})"
+                            )
+                        v_task = VerificationTask(
+                            task_type="VISUAL_REVIEW",
+                            organization_id=doc.organization_id,
+                            document_id=doc.id,
+                            target_id=visual_id,
+                            status="PENDING",
+                            review_notes=f"Page {page.page_number}: {'; '.join(review_notes_parts)}",
+                        )
+                        db.add(v_task)
+                
+                except Exception as visual_err:
+                    logger.warning(
+                        f"Visual persistence failed for page {page.page_number}: {visual_err}"
+                    )
+        
+        if visual_count > 0:
+            db.flush()
                 
         # 3. Table Continuation Intelligence & Persistence
         parsed_doc.tables = table_intelligence_service.detect_continuations(parsed_doc.tables)
@@ -149,6 +274,30 @@ def process_document(document_id: str, job_id: str):
             db.add(db_chunk)
         db.commit()
 
+        # 4.1 Phase 9: Visual Evidence Chunking
+        if visual_count > 0:
+            persisted_visuals = db.query(VisualAsset).filter(
+                VisualAsset.document_id == doc.id
+            ).all()
+            visual_chunks = chunking_service.chunk_visual_assets(
+                visual_assets=persisted_visuals,
+                document_id=doc.id,
+                start_chunk_index=len(chunks) + 1,
+            )
+            for vc in visual_chunks:
+                db_chunk = Chunk(
+                    document_id=vc.document_id,
+                    chunk_index=vc.chunk_index,
+                    page_number=vc.page_number,
+                    chunk_type=vc.chunk_type,
+                    content=vc.content,
+                    section_heading=vc.section_heading,
+                    metadata_json=vc.metadata_json,
+                )
+                db.add(db_chunk)
+            chunks.extend(visual_chunks)
+            db.commit()
+
         # 4.5 Dense Vector Indexing (pgvector)
         job.progress_pct = 75
         db.commit()
@@ -185,6 +334,7 @@ def process_document(document_id: str, job_id: str):
             details={
                 "pages": len(parsed_doc.pages),
                 "tables": len(parsed_doc.tables),
+                "visuals": visual_count,
                 "chunks": len(chunks),
                 "ocr_applied": parsed_doc.ocr_applied,
                 "fields_extracted": extraction_run.fields_extracted_count

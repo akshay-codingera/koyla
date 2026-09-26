@@ -200,4 +200,70 @@ class ChunkingService:
 
         return chunks
 
+    def chunk_visual_assets(
+        self,
+        visual_assets,
+        document_id: str,
+        start_chunk_index: int = 1000,
+    ) -> List[ChunkDTO]:
+        """
+        Create retrieval chunks for visual evidence extracted during ingestion.
+        Each visual with meaningful OCR text gets a VISUAL chunk that can be
+        embedded and retrieved alongside TEXT and TABLE chunks.
+
+        Uses the existing embedding pipeline (BAAI/bge-small-en-v1.5) —
+        no new model or vector DB.
+
+        Args:
+            visual_assets: list of VisualAsset model instances
+            document_id: document UUID
+            start_chunk_index: starting chunk index (avoids collisions with text/table chunks)
+        """
+        chunks: List[ChunkDTO] = []
+        chunk_idx = start_chunk_index
+
+        for va in visual_assets:
+            # Only create chunks for visuals that have meaningful text content
+            text_content = va.normalized_ocr_text or va.raw_ocr_text
+            if not text_content or len(text_content.strip()) < 10:
+                # Skip visuals with no or trivially short OCR — nothing useful to embed
+                continue
+
+            # Build a structured visual evidence block
+            parts = []
+            parts.append(f"[VISUAL: {va.visual_type}]")
+            if va.figure_number:
+                parts.append(f"Figure: {va.figure_number}")
+            if va.caption:
+                parts.append(f"Caption: {va.caption}")
+            parts.append(f"Page: {va.page_number}")
+            parts.append(f"Content: {text_content.strip()}")
+
+            content = "\n".join(parts)
+
+            chunks.append(
+                ChunkDTO(
+                    document_id=document_id,
+                    chunk_index=chunk_idx,
+                    page_number=va.page_number,
+                    chunk_type="VISUAL",
+                    content=content,
+                    section_heading=va.figure_number or f"Visual ({va.visual_type})",
+                    metadata_json={
+                        "source_type": "visual",
+                        "visual_id": va.id,
+                        "visual_type": va.visual_type,
+                        "figure_number": va.figure_number,
+                        "caption": va.caption,
+                        "page_number": va.page_number,
+                        "classification_confidence": va.classification_confidence,
+                        "ocr_confidence": va.ocr_confidence,
+                        "type": "visual",
+                    },
+                )
+            )
+            chunk_idx += 1
+
+        return chunks
+
 chunking_service = ChunkingService()

@@ -4,6 +4,7 @@ from app.models.user import User, Role, UserRole
 from app.models.document import Document, DocumentVersion, ProcessingJob, DocumentPage, Table, TableRow
 from app.models.chunk import Chunk, Embedding
 from app.models.audit import AuditEvent
+from app.models.visual import VisualAsset
 from app.models.extraction import (
     ExtractionRun,
     ExtractedField,
@@ -72,5 +73,6 @@ __all__ = [
     "TopicTerm",
     "TopicDocument",
     "TopicEvidence",
+    "VisualAsset",
 ]
 

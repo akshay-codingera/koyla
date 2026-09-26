@@ -21,6 +21,28 @@ class ParsedTable(BaseModel):
     continuation_status: str = "STANDALONE"  # STANDALONE, AUTO_MERGED, REVIEW_REQUIRED
     row_pages: List[int] = Field(default_factory=list)
 
+class ParsedVisual(BaseModel):
+    """Represents a detected visual element from a document page.
+
+    Coordinate convention: bbox uses PyMuPDF unrotated page coordinates
+    {x0, y0, x1, y1} where origin is top-left, units are PDF points (1/72 inch).
+    """
+    page_number: int
+    bbox: Optional[Dict[str, float]] = None  # {x0, y0, x1, y1} in PDF points
+    image_bytes: Optional[bytes] = None
+    width_px: Optional[int] = None
+    height_px: Optional[int] = None
+    visual_type: str = "UNKNOWN"
+    classification_confidence: float = 0.0
+    classification_method: str = "deterministic_heuristic"
+    extraction_method: str = "pymupdf_raster"  # pymupdf_raster, pymupdf_vector, composite
+    figure_number: Optional[str] = None
+    caption: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        arbitrary_types_allowed = True
+
 class ParsedPage(BaseModel):
     page_number: int
     text: str = ""
@@ -29,6 +51,7 @@ class ParsedPage(BaseModel):
     width: Optional[int] = None
     height: Optional[int] = None
     tables: List[ParsedTable] = Field(default_factory=list)
+    visuals: List[ParsedVisual] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class ParsedDocument(BaseModel):

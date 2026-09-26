@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     ENABLE_GROUNDING_VERIFICATION: bool = True
     MAX_EVIDENCE_CHUNKS: int = 5
 
+    # Phase 9: Visual & Figure Intelligence
+    # NOTE: Confidence thresholds are configurable operational thresholds,
+    # NOT guarantees of semantic accuracy.
+    VISUAL_OCR_CONFIDENCE_MIN: float = 0.70
+    VISUAL_DETECTION_DPI: int = 150
+    VISUAL_MIN_IMAGE_SIZE: int = 50   # pixels; skip decorative images smaller than this
+    VISUAL_CLASSIFICATION_CONFIDENCE_MIN: float = 0.5
+
     class Config:
         env_file = ".env"
         case_sensitive = True

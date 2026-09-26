@@ -5,6 +5,7 @@ import pymupdf
 from PIL import Image
 from app.services.parsers.base import BaseParser, ParsedDocument, ParsedPage, ParsedTable
 from app.services.parsers.ocr_parser import ocr_parser
+from app.services.parsers.visual_detector import visual_detector
 
 class PDFParser(BaseParser):
     def can_handle(self, mime_type: str, filename: str) -> bool:
@@ -77,7 +78,15 @@ class PDFParser(BaseParser):
                     text = native_text
                     ocr_applied = False
                     confidence = 1.0  # Clean digital native text
-                    
+                
+                # Phase 9: Visual detection on this page
+                try:
+                    page_visuals = visual_detector.detect_visuals_on_page(
+                        page=page, doc=doc, page_number=page_num, page_text=text
+                    )
+                except Exception:
+                    page_visuals = []
+
                 parsed_page = ParsedPage(
                     page_number=page_num,
                     text=text,
@@ -86,6 +95,7 @@ class PDFParser(BaseParser):
                     width=width,
                     height=height,
                     tables=page_tables,
+                    visuals=page_visuals,
                     metadata={"char_count": len(text)}
                 )
                 pages.append(parsed_page)

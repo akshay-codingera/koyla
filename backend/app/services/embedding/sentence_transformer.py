@@ -34,21 +34,22 @@ class LocalSentenceTransformerProvider(EmbeddingProvider):
         candidates = []
         if self._model_path:
             candidates.append(self._model_path)
-        
-        env_path = os.environ.get("NEURAL_MODEL_PATH")
-        if env_path:
-            candidates.append(env_path)
+        else:
+            from app.core.config import settings
+            env_path = os.environ.get("NEURAL_MODEL_PATH")
+            if env_path and (self._model_name == getattr(settings, "NEURAL_MODEL_NAME", "BAAI/bge-small-en-v1.5")):
+                candidates.append(env_path)
 
-        # Standard container path
-        candidates.append(f"/app/model_cache/{self._model_name}")
-        
-        # Local workspace paths relative to this file
-        curr_dir = os.path.dirname(os.path.abspath(__file__))
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(curr_dir)))
-        model_subpath = os.path.join(*self._model_name.split("/"))
-        candidates.append(os.path.join(base_dir, "backend", "model_cache", model_subpath))
-        candidates.append(os.path.join(base_dir, "model_cache", model_subpath))
-        candidates.append(os.path.join("backend", "model_cache", model_subpath))
+            # Standard container path
+            candidates.append(f"/app/model_cache/{self._model_name}")
+            
+            # Local workspace paths relative to this file
+            curr_dir = os.path.dirname(os.path.abspath(__file__))
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(curr_dir)))
+            model_subpath = os.path.join(*self._model_name.split("/"))
+            candidates.append(os.path.join(base_dir, "backend", "model_cache", model_subpath))
+            candidates.append(os.path.join(base_dir, "model_cache", model_subpath))
+            candidates.append(os.path.join("backend", "model_cache", model_subpath))
 
         for c in candidates:
             if c and os.path.exists(c):
