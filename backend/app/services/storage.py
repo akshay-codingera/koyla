@@ -1,4 +1,4 @@
-﻿import os
+import os
 import hashlib
 import mimetypes
 from pathlib import Path
@@ -11,6 +11,8 @@ ALLOWED_EXTENSIONS = {
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ".xls": "application/vnd.ms-excel",
+    ".csv": "text/csv",
+    ".txt": "text/plain",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".png": "image/png",
@@ -20,6 +22,8 @@ ALLOWED_MIME_TYPES = set(ALLOWED_EXTENSIONS.values()).union({
     "application/x-pdf",
     "image/pjpeg",
     "image/x-png",
+    "application/csv",
+    "text/comma-separated-values",
 })
 
 class StorageService:

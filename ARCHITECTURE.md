@@ -165,3 +165,32 @@ Health telemetry at `/api/v1/system/health` performs genuine operational checks 
 8. **Temporal Analytics**: Validates trend calculation and cache lookup engine.
 9. **Report Engine**: Validates `python-docx` rendering pipeline and template store.
 
+---
+
+## 10. Universal Evidence Engine & Multimodal Intelligence (Phase 10)
+
+The Universal Evidence Engine transforms heterogeneous mining documentation into a unified, verified evidence plane:
+
+### 10.1 Heterogeneous Formats & Auto-Detection
+- **Supported Formats**: PDF (native and scanned), DOCX, XLSX, XLS (legacy BIFF8 via `xlrd`), CSV (multi-encoding and delimiter detection via `csv.Sniffer`), TXT (paragraph segmentation and virtual pagination), PNG, JPG, and JPEG (first-class `VisualAsset` ingestion).
+- **One-Action Pipeline**: Multi-file batch drag-and-drop (`POST /api/v1/evidence/upload`) with automated MIME/magic sniffing and document category inference (`PRODUCTION_REPORT`, `GEOLOGICAL_REPORT`, `MINE_INFORMATION`, `STATUTORY_CLEARANCE`).
+
+### 10.2 Format-Aware Coordinate Provenance
+- All extracted structured fields, tabular snippets, and figures retain strict format coordinates:
+  - Spreadsheets: `Sheet: 'FY2024_Actuals' | Cell: 'C14'`
+  - CSVs: `Row 2, Col 'Coal_Production_MT'`
+  - Scans & Native PDFs: `Page 3, BBox: [120, 340, 480, 520]`
+
+### 10.3 Deterministic Cross-Document Relationship Engine
+- Automatically establishes deterministic cross-document links during ingestion (`DocumentRelationship` entity):
+  - `SAME_MINE_OR_BLOCK` (confidence `1.0`): Identical extracted mine/block entities.
+  - `SAME_PERIOD` (confidence `0.9`): Matching fiscal year or operational period.
+  - `SAME_METRIC` (confidence `0.85`): Matching metric keys across reporting periods.
+  - `DOCUMENT_FAMILY` (confidence `0.85`): Shared naming prefixes/series.
+  - `CROSS_MODAL_EVIDENCE` (confidence `0.9`): Co-occurring visual diagrams (geological sections, boreholes) and tabular/narrative records.
+
+### 10.4 Multimodal Grounded Q&A & Human Verification
+- **QACitation Enrichment**: Every citation links back to physical page thumbnails, visual bounding boxes, and spreadsheet cell coordinates.
+- **Evidence Control Room**: Unified operator interface (`/evidence`) for inspecting multi-format evidence items, reviewing relationships, and recording human audit actions (`APPROVE`, `CORRECT`, `REJECT`).
+
+

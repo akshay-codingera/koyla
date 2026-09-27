@@ -32,6 +32,7 @@ from app.models.topic import (
     TopicDocument,
     TopicEvidence,
 )
+from app.models.evidence import DocumentRelationship
 
 __all__ = [
     "Base",
@@ -74,5 +75,6 @@ __all__ = [
     "TopicDocument",
     "TopicEvidence",
     "VisualAsset",
+    "DocumentRelationship",
 ]
 

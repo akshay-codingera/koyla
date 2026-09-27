@@ -1,4 +1,4 @@
-﻿import re
+import re
 from typing import List, Dict, Any, Optional, Tuple
 from app.services.extraction.base import BaseExtractionProvider, FieldCandidate
 
@@ -323,8 +323,29 @@ class RuleBasedExtractionProvider(BaseExtractionProvider):
                     score = 0.95 if numeric_val is not None or rule["type"] == "STRING" else 0.75
                     level = "HIGH" if score >= 0.85 else "MEDIUM"
                     
-                    row_snippet = " | ".join(str(c) for c in cells)
+                    # Format-aware coordinate provenance
+                    tbl_meta = getattr(table, "metadata_json", {}) or {}
+                    field_meta = {
+                        "header": headers[col_idx],
+                        "entity_name": entity_name,
+                        "entity_col": entity_col_name,
+                        "logical_table_id": getattr(table, "logical_table_id", None)
+                    }
+                    if tbl_meta.get("sheet_name"):
+                        sheet = tbl_meta["sheet_name"]
+                        col_letter = chr(ord('A') + min(col_idx, 25))
+                        row_num = (getattr(row, "row_index", 1) or 1) + 1
+                        field_meta["sheet_name"] = sheet
+                        field_meta["cell_coordinate"] = f"{col_letter}{row_num}"
+                        field_meta["provenance_display"] = f"Sheet: '{sheet}', Cell: '{col_letter}{row_num}'"
+                    elif tbl_meta.get("format") == "CSV":
+                        r_idx = getattr(row, "row_index", 1) or 1
+                        field_meta["csv_row"] = r_idx
+                        field_meta["csv_col"] = headers[col_idx]
+                        field_meta["provenance_display"] = f"Row {r_idx}, Col '{headers[col_idx]}'"
                     
+                    row_snippet = " | ".join(str(c) for c in cells)
+
                     candidate = FieldCandidate(
                         field_name=rule["field"],
                         field_category=rule["category"],
@@ -340,12 +361,7 @@ class RuleBasedExtractionProvider(BaseExtractionProvider):
                         extraction_method="RULE_BASED",
                         confidence_score=score,
                         confidence_level=level,
-                        metadata={
-                            "header": headers[col_idx],
-                            "entity_name": entity_name,
-                            "entity_col": entity_col_name,
-                            "logical_table_id": getattr(table, "logical_table_id", None)
-                        }
+                        metadata=field_meta
                     )
                     candidates.append(candidate)
 

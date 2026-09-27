@@ -34,6 +34,23 @@ interface TableProvenance {
   row_count?: number;
 }
 
+interface VisualProvenance {
+  visual_asset_id?: string;
+  visual_type?: string;
+  figure_number?: string;
+  caption?: string;
+  bbox?: { x0: number; y0: number; x1: number; y1: number };
+}
+
+interface FormatProvenance {
+  format?: string;
+  sheet_name?: string;
+  cell_range?: string;
+  csv_row?: number;
+  csv_col?: string;
+  provenance_display?: string;
+}
+
 interface QACitation {
   citation_id: string;
   citation_index: number;
@@ -45,6 +62,8 @@ interface QACitation {
   excerpt: string;
   relevance_score: number;
   table_provenance?: TableProvenance;
+  visual_provenance?: VisualProvenance;
+  format_provenance?: FormatProvenance;
 }
 
 interface CalculationResult {
@@ -811,6 +830,71 @@ export const AIQuery: React.FC = () => {
                         </button>
                       </div>
                     </div>
+
+                    {/* Visual Diagram Provenance if chunk was a visual asset */}
+                    {cite.visual_provenance && (
+                      <div className="bg-blue-50/80 border border-blue-200 rounded-lg p-3 text-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 font-bold text-blue-900">
+                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                            <span>Visual Diagram Evidence:</span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-200 text-blue-900 font-bold uppercase">
+                              {cite.visual_provenance.visual_type?.replace(/_/g, ' ') || 'DIAGRAM'}
+                            </span>
+                            {cite.visual_provenance.figure_number && (
+                              <span className="text-[10px] font-mono text-blue-700">
+                                ({cite.visual_provenance.figure_number})
+                              </span>
+                            )}
+                          </div>
+                          {cite.visual_provenance.bbox && (
+                            <span className="text-[10px] font-mono text-blue-600">
+                              BBox: [{Math.round(cite.visual_provenance.bbox.x0)}, {Math.round(cite.visual_provenance.bbox.y0)} - {Math.round(cite.visual_provenance.bbox.x1)}, {Math.round(cite.visual_provenance.bbox.y1)}]
+                            </span>
+                          )}
+                        </div>
+
+                        {cite.visual_provenance.caption && (
+                          <p className="text-blue-800 text-[11px] font-medium">
+                            <strong>Caption:</strong> {cite.visual_provenance.caption}
+                          </p>
+                        )}
+
+                        {cite.visual_provenance.visual_asset_id && (
+                          <div className="pt-1 flex items-center gap-3">
+                            <img
+                              src={`/api/v1/visuals/${cite.visual_provenance.visual_asset_id}/image`}
+                              alt="Visual Evidence"
+                              className="h-20 object-contain rounded border border-blue-200 bg-white"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                            <div className="text-[10px] text-blue-700 font-mono">
+                              Extracted visual asset verified against ground truth document page.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Format Provenance (Spreadsheet / CSV Coordinates) */}
+                    {cite.format_provenance && (
+                      <div className="bg-emerald-50/80 border border-emerald-200 rounded-lg p-2.5 text-xs flex items-center justify-between font-mono">
+                        <div className="flex items-center gap-2 text-emerald-900 font-bold">
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Coordinate Provenance:</span>
+                          <span className="text-emerald-700 font-normal">
+                            {cite.format_provenance.provenance_display || `Sheet: ${cite.format_provenance.sheet_name || 'Main'}`}
+                          </span>
+                        </div>
+                        {cite.format_provenance.cell_range && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                            Range: {cite.format_provenance.cell_range}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Table Continuation Details if chunk was a table */}
                     {cite.table_provenance && (

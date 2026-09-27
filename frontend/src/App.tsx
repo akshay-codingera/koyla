@@ -13,6 +13,7 @@ import { ReportNew } from './pages/ReportNew';
 import { ReportStudio } from './pages/ReportStudio';
 import { TopicIntelligence } from './pages/TopicIntelligence';
 import { SystemStatus } from './pages/SystemStatus';
+import { EvidenceControlRoom } from './pages/EvidenceControlRoom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="query" element={<AIQuery />} />
           <Route path="ask" element={<AIQuery />} />
+          <Route path="evidence" element={<EvidenceControlRoom />} />
           <Route path="knowledge" element={<KnowledgeExplorer />} />
           <Route path="search" element={<KnowledgeExplorer />} />
           <Route path="reports" element={<ReportList />} />

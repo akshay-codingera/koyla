@@ -1,15 +1,21 @@
-﻿from pathlib import Path
+from pathlib import Path
 from fastapi import HTTPException
 from app.services.parsers.base import BaseParser, ParsedDocument, ParsedPage, ParsedTable
 from app.services.parsers.pdf_parser import pdf_parser
 from app.services.parsers.docx_parser import docx_parser
 from app.services.parsers.spreadsheet_parser import spreadsheet_parser
+from app.services.parsers.legacy_xls_parser import legacy_xls_parser
+from app.services.parsers.csv_parser import csv_parser
+from app.services.parsers.txt_parser import txt_parser
 from app.services.parsers.ocr_parser import ocr_parser
 
 PARSERS = [
     pdf_parser,
     docx_parser,
     spreadsheet_parser,
+    legacy_xls_parser,
+    csv_parser,
+    txt_parser,
     ocr_parser,
 ]
 
@@ -32,6 +38,9 @@ __all__ = [
     "pdf_parser",
     "docx_parser",
     "spreadsheet_parser",
+    "legacy_xls_parser",
+    "csv_parser",
+    "txt_parser",
     "ocr_parser",
     "get_parser_for_file",
 ]

@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from typing import List, Any
 import openpyxl
 from app.services.parsers.base import BaseParser, ParsedDocument, ParsedPage, ParsedTable
@@ -6,7 +6,9 @@ from app.services.parsers.base import BaseParser, ParsedDocument, ParsedPage, Pa
 class SpreadsheetParser(BaseParser):
     def can_handle(self, mime_type: str, filename: str) -> bool:
         ext = Path(filename).suffix.lower()
-        return ext in [".xlsx", ".xls"] or "spreadsheetml" in mime_type or "ms-excel" in mime_type
+        if ext == ".xls":
+            return False
+        return ext == ".xlsx" or "openxmlformats-officedocument.spreadsheetml" in mime_type
 
     def parse(self, file_path: str) -> ParsedDocument:
         wb = openpyxl.load_workbook(file_path, data_only=True)

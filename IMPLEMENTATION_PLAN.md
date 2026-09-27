@@ -1,217 +1,217 @@
-# IMPLEMENTATION_PLAN.md
-# CIL / CMPDI AI Reporting & Intelligence Platform
-# Master Technical Implementation Plan
+# IMPLEMENTATION PLAN — PHASE 10: UNIVERSAL EVIDENCE ENGINE
 
-## 1. Executive Summary & Problem Context
-**Problem Statement:** SIH 26023 — "AI-Powered Geological, Mining and other Reporting Solution for CMPDI/CIL subsidiaries"
-**Target System:** Internal enterprise reporting intelligence platform for Coal India Limited (CIL) and Central Mine Planning & Design Institute (CMPDI).
-**Core Value Proposition:** Transforms heterogeneous, multi-format mining documents (geological survey reports, borehole stratigraphy logs, monthly production bulletins, overburden stripping returns, statutory safety filings) into a verifiable, audit-backed knowledge repository featuring:
-1. Native parsing & local OCR with table structure recovery
-2. Structure-preserving chunking and hybrid semantic/lexical indexing
-3. Grounded Q&A with strict evidence extraction, zero external cloud dependencies, and clear refusal mechanics
-4. Deterministic template-driven report generation producing genuine editable `.docx` files
-5. Quantitative topic modeling, c-TF-IDF keyword extraction, and word clouds
-6. Human-in-the-loop verification triage queue
-7. Immutable audit logging and multi-node simulated federation
+## Automatic Multiformat Intelligence, Multimodal Grounding & Human Verification
+
+---
+
+## 1. Executive Summary & Objective
+
+Phase 10 elevates Koyla from separate document and visual intelligence modules into a **Universal Evidence Engine**.
+The guiding design principle is:
+> **ONE ACTION FOR THE USER → AUTOMATIC EVIDENCE PIPELINE → ONE UNIFIED EVIDENCE LAYER → GROUNDED ANSWERS → HUMAN REVIEW ONLY WHEN NECESSARY**
+
+The platform will automatically ingest heterogeneous mining and geological records (**PDF, DOCX, XLSX, XLS, CSV, JPG/JPEG, PNG, TXT**), extract structured and multimodal evidence with format-aware provenance (Workbook/Sheet/Cell, File/Row/Column, PDF/Page/Bbox), discover cross-record relationships, index everything in the existing `pgvector` store, and enable multimodal grounded Q&A with deterministic arithmetic.
 
 ---
 
 ## 2. Non-Negotiable Architecture Constraints
-1. **Zero External Runtime AI APIs:** No runtime calls to OpenAI, Anthropic, Gemini, Pinecone, or any external hosted services. System operates fully inside a local / air-gapped government network.
-2. **Local AI Toolchain:**
-   - LLM: Local Ollama / vLLM / OpenAI-compatible local server adapter (`http://localhost:11434/v1` or `http://localhost:8000/v1`) with deterministic extractive rule fallback when running without GPU.
-   - Embeddings: Local `sentence-transformers` (`all-MiniLM-L6-v2` or `bge-small-en-v1.5`).
-   - OCR: Local `PaddleOCR` with `Tesseract` fallback and `OpenCV` image preprocessing (deskew, denoise, binarization).
-   - Document Parsing: `PyMuPDF` / `pdfplumber` for digital PDFs, `openpyxl` for spreadsheets, `python-docx` for Word documents.
-   - Report Rendering: Deterministic `python-docx` rendering based on validated structured records.
-3. **Multi-Database Support (Production + Standalone Local Dev):**
-   - Production Target: PostgreSQL 16+ with `pgvector`.
-   - Standalone Local Dev Fallback: SQLite with NumPy vector cosine similarity and SQLite FTS5 for full-text search, ensuring 100% out-of-the-box local execution on any Windows/Linux workstation without requiring a running Docker or PostgreSQL service.
-   - Containerization: Production-grade `docker-compose.yml` defining frontend, backend, worker, postgres+pgvector, and redis.
-4. **Anti-Hallucination & Anti-Fake Guardrails:**
-   - Extract-then-compose Q&A pipeline: Composition model only sees verbatim extracted evidence snippets.
-   - Clear refusal threshold: Returns *"Insufficient verified evidence found in the indexed sources"* when similarity or evidence score is below threshold.
-   - Real calculated KPIs: Dashboard metrics are computed from actual database records.
-   - Prominent UI badge: `"Prototype / Demo Dataset"` displayed on all synthetic seed records.
-5. **No Dead UI:** All 14 routes, modals, tables, and actions are backed by real FastAPI endpoints with loading, empty, and error states.
+
+1. **Reuse Existing Stack**:
+   - Reuse existing `Document`, `Chunk`, `Embedding`, `VisualAsset`, `ExtractedField`, and `VerificationTask` tables.
+   - Reuse existing `bge-small-en-v1.5` embeddings and `pgvector` index.
+   - Reuse existing hybrid BM25 + dense search + RRF retrieval engine.
+   - Reuse existing Phase 9 visual detector and storage pipeline.
+   - Do NOT create a second ingestion architecture, retrieval stack, or vector database.
+2. **Zero Hallucination & Strict Grounding**:
+   - Numerical calculations must be computed deterministically via `ArithmeticEngine` (no LLM math).
+   - If evidence is missing or contradictory, state refusal or report conflict requiring review.
+3. **Automatic UX**:
+   - No 8-step wizard. One unified **ADD EVIDENCE** action for multi-file drag-and-drop.
+   - Automated format detection, parser selection, confidence estimation, and relationship discovery.
+   - Human review requested **only** for low-confidence or conflicting items.
 
 ---
 
-## 3. Institutional Hierarchy & Organizational Model
-The platform models Coal India Limited's operational and planning structure:
-```
-Coal India Limited (Apex Holding Company)
-└── CMPDI (Central Mine Planning & Design Institute - Ranchi HQ)
-    ├── Regional Institute - I (Asansol)        <---> ECL (Eastern Coalfields Limited)
-    ├── Regional Institute - II (Dhanbad)       <---> BCCL (Bharat Coking Coal Limited)
-    ├── Regional Institute - III (Ranchi)       <---> CCL (Central Coalfields Limited)
-    ├── Regional Institute - IV (Nagpur)        <---> WCL (Western Coalfields Limited)
-    ├── Regional Institute - V (Bilaspur)       <---> SECL (South Eastern Coalfields Limited)
-    ├── Regional Institute - VI (Singrauli)     <---> NCL (Northern Coalfields Limited)
-    ├── Regional Institute - VII (Bhubaneswar)  <---> MCL (Mahanadi Coalfields Limited)
-    └── HQ-served / Non-RI Mapping              <---> NEC (North Eastern Coalfields)
-```
-Lower-level organizational units: Areas (e.g., Korba, Dipka, Kusmunda, Rajmahal), Mines/Collieries (Open Cast, Underground), and Exploration Blocks.
+## 3. Dependency Graph & Module Breakdown
 
----
-
-## 4. Role-Based Access Control (RBAC)
-Configurable role definitions enforced strictly at the FastAPI middleware/dependency level:
-1. **Ministry Officer / Cross-Organization Viewer:** Read-only access across all subsidiaries and RIs; views national summaries, executive dashboards, and approved briefs.
-2. **CMPDI HQ Officer:** Cross-subsidiary and cross-RI visibility for planning, survey digestion, cross-validation, and high-level report approval.
-3. **RI Analyst:** Scoped to designated Regional Institute and associated subsidiary; manages geological survey ingestions, borehole stratigraphy, and exploration data.
-4. **Subsidiary Analyst:** Scoped to designated operating subsidiary (e.g. SECL, ECL); ingests mine production figures, monthly returns, and stripping ratios.
-5. **Verification Officer:** Triage authority to review low-confidence OCR, reconcile conflicting cross-document values, and approve/reject drafted reports.
-6. **System Administrator:** Manages users, organization trees, trust tiers, validation rules, and system health.
-
----
-
-## 5. End-to-End Processing & Intelligence Pipeline
-```
-[Document Upload (PDF, XLSX, DOCX, IMG)]
-                  │
-                  ▼
-         [SHA-256 Hash & MIME Check]
-                  │
-                  ▼
-         [Processing Job Queued]
-                  │
-                  ▼
-  ┌───────────────┴───────────────┐
-  │                               │
-  ▼                               ▼
-[Digital PDF / DOCX / XLSX]    [Scanned PDF / Images]
-(PyMuPDF, python-docx, openpyxl) (OpenCV Deskew/Denoise + PaddleOCR)
-  │                               │
-  └───────────────┬───────────────┘
-                  │
-                  ▼
-    [Table & Structure Recovery]
-                  │
-                  ▼
-    [Structure-Preserving Chunking]
-                  │
-                  ▼
-   [Local Embeddings (sentence-transformers)]
-                  │
-                  ▼
-    [Hybrid Indexing: Dense + BM25]
-                  │
-                  ▼
-  [Domain Extraction & Deterministic Validation]
-                  │
-                  ▼
-    [Conflict Detection & Review Flagging]
+```text
+                [User: ADD EVIDENCE (Multi-File Drop)]
+                                 │
+                                 ▼
+                     [StorageService Validation]
+                     (PDF, DOCX, XLSX, XLS, CSV, JPG, PNG, TXT)
+                                 │
+                                 ▼
+                    [Universal Ingestion Router]
+         ┌───────────────┬───────────────┬───────────────┐
+         ▼               ▼               ▼               ▼
+    [PDFParser]    [Spreadsheet/     [DOCXParser]   [OCRParser /
+   (PyMuPDF +       CSV Parser]     (python-docx +  VisualDetector]
+  VisualDetector) (openpyxl + csv)   embed images)   (Direct Images)
+         │               │               │               │
+         └───────────────┼───────────────┴───────────────┘
+                         ▼
+             [Format-Aware Evidence Normalization]
+             - Text Chunks (Page / Section)
+             - Table Chunks (Sheet / Range / Caption)
+             - Structured Values (Workbook / Sheet / Cell)
+             - Visual Assets (Page / Bbox / OCR / Classification)
+                         │
+                         ▼
+             [Confidence Evaluation & Auto-Acceptance]
+             - High confidence -> AUTO-ACCEPTED
+             - Low confidence -> REVIEW_REQUIRED (VerificationTask)
+                         │
+                         ▼
+             [Automatic Relationship Discovery]
+             - Match: same org, same mine, same period, same metric
+                         │
+                         ▼
+             [pgvector Dense Indexing (BGE-small-en-v1.5)]
+                         │
+                         ▼
+        ┌────────────────────────────────────────────────┐
+        │              UNIFIED EVIDENCE LAYER            │
+        │ - Evidence Control Room (/evidence)            │
+        │ - Hybrid Multimodal Retrieval (BM25 + Dense)   │
+        │ - Multimodal Grounded Q&A + Deterministic Math │
+        └────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 6. Phased Implementation Roadmap
+## 4. Proposed Technical Changes
 
-### Phase 0: System Architecture & Design Documentation (Immediate)
-- Complete design documents in project root:
-  - `IMPLEMENTATION_PLAN.md`
-  - `ARCHITECTURE.md`
-  - `DATABASE_SCHEMA.md`
-  - `API_CONTRACT.md`
-  - `UI_MAP.md`
-  - `SECURITY_MODEL.md`
-  - `TEST_PLAN.md`
-  - `DEMO_SCRIPT.md`
+### 4.1 Backend Services & Parsers
 
-### Phase 1: Repository Foundation, Database, RBAC & Audit
-- Backend directory scaffolding: `backend/app/api`, `backend/app/core`, `backend/app/db`, `backend/app/models`, `backend/app/schemas`, `backend/app/services`.
-- Database engine setup: SQLAlchemy 2.0 with PostgreSQL+pgvector engine and standalone SQLite/NumPy fallback.
-- Database tables creation & migrations.
-- Seed master data: CIL, CMPDI, 7 RIs, 8 Subsidiaries, Areas, Mines.
-- User authentication (JWT tokens, password hashing) and RBAC middleware.
-- Immutable audit trail logging service.
+#### A. Storage & Allowed Extensions ([`backend/app/services/storage.py`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/backend/app/services/storage.py))
+- Add `.csv` (`text/csv`) and `.txt` (`text/plain`) to `ALLOWED_EXTENSIONS` and `ALLOWED_MIME_TYPES`.
+- Ensure streaming SHA-256 calculation and path sanitization protect against path traversal.
 
-### Phase 3: Document Intelligence & Multi-Page Table Continuity (ACCEPTED)
-- Native parsers for digital PDF (`PyMuPDF`), spreadsheets (`openpyxl`), and documents (`python-docx`).
-- Local OCR pipeline with image preprocessing and Tesseract fallback.
-- Physical & logical multi-page table preservation with deterministic continuation scoring formula.
-- Structure-preserving chunking preserving exact page provenance and repeated headers.
+#### B. Spreadsheet & CSV Parser Upgrades ([`backend/app/services/parsers/`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/backend/app/services/parsers/))
+- **`spreadsheet_parser.py`**:
+  - Deep inspection of multi-sheet workbooks (`openpyxl`).
+  - Extract exact cell/range provenance (e.g. `Sheet: 'Monthly Production', Range: 'B12:E18'`).
+  - Extract structured reporting fields (metric name, numeric value, unit, sheet, cell address).
+  - Handle merged cells and data types cleanly without crashing.
+- **`csv_parser.py` [NEW]**:
+  - Automatic delimiter detection (comma `,`, tab `\t`, semicolon `;`, pipe `|`) via Python `csv.Sniffer`.
+  - Encoding fallback (`utf-8`, `utf-8-sig`, `latin-1`).
+  - Column type inference (numeric, date, text) and row-level coordinates (e.g. `Row 184, Column 'production'`).
+- **`txt_parser.py` [NEW]**:
+  - Plain text file ingestion with structured paragraph segmentation and char/line provenance.
+- **`ocr_parser.py`**:
+  - For direct image uploads (`.jpg`, `.jpeg`, `.png`), pass image to `visual_detector.detect_visuals_from_image_file()`.
+  - Automatically create `ParsedVisual` with 14-type classification, confidence, and OCR transcript.
+- **`docx_parser.py`**:
+  - Extract embedded images from `doc.part.related_parts` as `ParsedVisual` entries.
 
-### Phase 4: Structured Extraction, Validation, Provenance & Verification (ACCEPTED)
-- Mining domain schema: mine name, coal seam, seam thickness, stripping ratio, coal production, ash content, fiscal year.
-- Deterministic regex & table extractor services with field-level provenance (`TableRow.source_page`).
-- Deterministic domain boundary validation (stripping ratio non-negative, ash content 0-100%, units, FY format).
-- Cross-document reconciliation engine with configurable prototype policy threshold (`settings.RECONCILIATION_VARIANCE_THRESHOLD`).
-- Human verification queue (`/verification`) with `APPROVE`, `CORRECT`, `REJECT`, `DEFER` actions and audit trail.
+#### C. Ingestion Pipeline & Auto-Classification ([`backend/app/services/ingestion.py`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/backend/app/services/ingestion.py))
+- Infer `document_type` automatically from file extension and content if not explicitly specified:
+  - `.xlsx`, `.xls`, `.csv` -> `STATISTICAL_ANNEXURE` or `PRODUCTION_SUMMARY`
+  - `.png`, `.jpg`, `.jpeg` -> `VISUAL_RECORD`
+  - `.pdf`, `.docx` -> `GEOLOGICAL_REPORT` or `TECHNICAL_REPORT`
+  - `.txt` -> `TECHNICAL_MEMO`
+- Ingest structured values directly into `ExtractedField` with format-aware `metadata_json`.
+- Chunk structured records into `Chunk` with `chunk_type="STRUCTURED_VALUE"` or `"TABLE"`.
+- Assess extraction/OCR confidence: if `< 0.60`, flag `needs_review=True` and insert `VerificationTask`.
 
-### Phase 5: Hybrid Retrieval, pgvector Indexing, Reranking & Knowledge Explorer (ACTIVE)
-- Local embedding service (`EmbeddingProvider`) with `LocalSentenceTransformerProvider` and `DeterministicLocalEmbeddingProvider` (384-d normalized vectors).
-- Database pgvector schema extensions on `embeddings` (vector index, unique constraints, metadata).
-- PostgreSQL full-text search (`tsvector` / `plainto_tsquery` / `ts_rank_cd`) + exact substring lexical matching.
-- Query normalization engine detecting entities (mines, subsidiaries), metrics, and fiscal periods (`period_start`, `period_end`).
-- Server-side organization scoping and metadata filtering (FY, doc type, source tier).
-- Reciprocal Rank Fusion (RRF) combining lexical and semantic rankings ($k=60$).
-- Local cross-encoder reranker with graceful fallback when disabled/offline.
-- Reusable `RetrievalResult` and `RetrievalTrace` contracts preserving full provenance.
-- Incremental and batch chunk indexing pipeline integrated into ingestion jobs.
-- Knowledge Explorer UI (`/knowledge` and `/search`) with multi-modal search, filters, provenance modal, and document viewer navigation.
+#### D. Automatic Relationship Discovery ([`backend/app/services/relationships.py`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/backend/app/services/relationships.py) [NEW])
+- Service detecting lightweight deterministic connections across evidence items:
+  - `SAME_ORGANIZATION`: Shared `organization_id`
+  - `SAME_MINE_OR_BLOCK`: Shared entity name (e.g. "Rajmahal OCP", "Gevra OC", "Moonidih")
+  - `SAME_PERIOD`: Matching fiscal year or monthly period (e.g. "FY 2024-25", "May 2024")
+  - `SAME_METRIC`: Identical metric name across different files (e.g. "coal_production" in Excel vs. Report)
+  - `SAME_DOCUMENT_FAMILY`: Related annexures, figures, and versions
+- Strictly deterministic matching; no LLM entity invention.
 
-### Phase 6: Grounded AI Q&A Engine & Citation (COMPLETED)
-- Extract-then-compose Q&A pipeline calling Phase 5 retrieval engine.
-- Local LLM answer composition strictly grounded in retrieved evidence chunks.
-- Refusal mechanism: "Insufficient verified evidence found in the selected knowledge base."
-- Entailment check and verbatim citations with physical page links.
-- Interactive Q&A UI (`/ask`) with query history, evidence cards, citations, and confidence badges.
+#### E. Universal Evidence API ([`backend/app/api/v1/evidence.py`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/backend/app/api/v1/evidence.py) [NEW])
+- `POST /api/v1/evidence/upload`: Multi-file upload (`List[UploadFile]`) with automatic format routing and background ingestion.
+- `GET /api/v1/evidence/summary`: Aggregated counts across records, text items, tables, structured values, figures, and review backlog.
+- `GET /api/v1/evidence/items`: Unified list of evidence items with filtering by type, source document, and review status.
+- `GET /api/v1/evidence/{evidence_id}`: Granular evidence inspector with exact location and source snippet.
+- `POST /api/v1/evidence/{evidence_id}/review`: One-click verification action (`APPROVE`, `CORRECT`, `REJECT`).
+- `GET /api/v1/evidence/relationships`: List of discovered cross-record relationships.
+- Registered in `backend/app/main.py`.
 
-### Phase 7: Prescribed Official Report Formats & Statutory Report Studio (COMPLETED)
-- Authoritative statutory schema conforming strictly to Ministry of Coal / CCO OM F.No. CPAM-34011/28/2019-CPAM [E-343762] dated 31 January 2025, Appendix-I ("DETAILS TO BE FURNISHED IN THE MINING PLANS FOR COAL/LIGNITE BLOCKS").
-- Automated statutory inventory verification (`schema_audit.py`): 184 total nodes, 136 actionable statutory requirements, 12 prescribed tables, 9 technical plates (with OC/UG conditionality), 13 statutory annexures, 4 certifications/undertakings, zero invented IDs.
-- Deterministic calculations: 7-step ISP/UNFC geological-to-extractable reserve deduction cascade, stripping ratio ($m^3/t$), Life of Mine (LOM), and mandatory 2025 Just Transition minimum 25% escrow rule (Section 8.4.2).
-- Strict safeguards: missing data rendered strictly as `DATA NOT AVAILABLE IN VERIFIED KNOWLEDGE BASE`, unattached plates rendered as `NOT GENERATED — SOURCE DATA REQUIRED`.
-- Statutory review & digital signing workflow: Qualified Person (Rule 22C MCR 1960) inline review/correction preserving original and revised values, digital execution of statutory certificates (`AUTHORIZED_SIGNED`), and immutable version freezing with SHA-256 fingerprinting.
-- Submission readiness engine: distinguishes `DRAFT_INCOMPLETE` from `READY_FOR_AUTHORIZED_SUBMISSION` (never claiming CCO approval).
-- Native DOCX generator: produces physical format-conforming DOCX files with real tables, metadata headers, undertakings, and cryptographic hashes.
-- Full UI suite: `/reports`, `/reports/new`, and `/reports/:id` (Report Studio) with multi-tab statutory workbench.
-- Verification: 13/13 Phase 7 tests passed, 86/86 full backend regression tests passed, 0 frontend build errors, and 8 live Playwright browser acceptance screenshots captured.
-
-### Phase 8: Topic Identification & Word Cloud Analytics
-- Topic clustering engine using document embeddings and c-TF-IDF keyword extraction.
-- Trend analysis across fiscal years and subsidiaries.
-- Topic Analytics UI (`/topics`) with topic ranking, term distributions, and interactive Word Cloud.
-
-### Phase 8: Human Verification Center & Executive Dashboard
-- Verification Queue UI (`/verification`) with tri-pane layout (source preview, extracted value, approval/correction actions).
-- Executive Dashboard UI (`/dashboard`) computing live calculated metrics directly from database queries.
-- Prominent `"Prototype / Demo Dataset"` banner.
-
-### Phase 9: Multi-Node Federation Simulator
-- 3 isolated simulated data nodes (`node-cmpdi`, `node-secl`, `node-ecl`).
-- Federation gateway API routing queries to relevant nodes, merging ranked evidence, and preserving node provenance.
-- Organization explorer & federation UI (`/organization`).
-
-### Phase 10: Governance, System Health, E2E Testing & Demo Dataset
-- System Health UI (`/system`) with real ping checks for API, DB, Vector Index, OCR, and LLM services.
-- Governance & Audit UI (`/governance`) with immutable event log and SHA-256 file integrity verification.
-- Administration UI (`/administration`) for managing users, roles, organizations, and validation rules.
-- Synthetic demonstration dataset (25+ realistic mining & geological reports, clean PDFs, scanned reports, spreadsheets, conflicting source pairs).
-- Automated test suite (Pytest backend unit/integration tests, frontend build, and Playwright E2E browser tests).
-- UI polishing following government portal visual standards.
+#### F. Multimodal Grounding in Q&A ([`backend/app/services/qa/qa_service.py`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/backend/app/services/qa/qa_service.py))
+- Update evidence compilation to seamlessly interleave:
+  - Textual paragraphs
+  - Spreadsheet tables with sheet and cell ranges
+  - Structured values with cell provenance
+  - Visual figures with figure numbers, types, captions, and thumbnails
+- Update `ArithmeticEngine` to support percentage change and delta calculations across spreadsheet/CSV records.
+- Ensure citations reflect format-aware provenance (`Workbook -> Sheet -> Cell`, `PDF -> Page`, `Figure -> Bbox`).
 
 ---
 
-## 7. Technology Stack Summary
-- **Backend:** Python 3.14 / 3.11+, FastAPI, SQLAlchemy 2.0, Pydantic v2, PyMuPDF, python-docx, openpyxl, OpenCV, sentence-transformers, NumPy.
-- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Lucide Icons, Chart.js / Recharts.
-- **Data Layer:** PostgreSQL 16 + pgvector (with zero-dependency local SQLite/NumPy fallback).
-- **Deployment:** Multi-container `docker-compose.yml` (frontend, backend, worker, postgres+pgvector, redis) and local direct CLI runner.
+### 4.2 Frontend Interfaces
+
+#### A. Unified "ADD EVIDENCE" Drag & Drop UX
+- Enhance [`frontend/src/pages/DocumentUpload.tsx`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/frontend/src/pages/DocumentUpload.tsx):
+  - Support multi-file selection and drop for all 8 formats.
+  - Batch processing indicator showing real-time file-by-file progress.
+  - Completion summary banner showing text count, table count, visual count, structured value count, and relationships discovered.
+  - Direct button to `[VIEW EVIDENCE]`.
+
+#### B. Evidence Control Room ([`frontend/src/pages/EvidenceControlRoom.tsx`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/frontend/src/pages/EvidenceControlRoom.tsx) [NEW])
+- Route: `/evidence`
+- Dark technical enterprise layout matching Koyla design language.
+- Top KPI counters: Total Records, Text Items, Tables, Structured Values, Visuals, Needs Review.
+- Filter toolbar: `All | Text | Tables | Values | Visuals | Needs Review`.
+- Evidence Register table with format-aware location badges (`Sheet: April, D17`, `Page 18, Fig 1`).
+- Inspector Modal: Shows raw content, image preview (if visual), table grid (if table), and review actions (`[Approve]`, `[Correct]`, `[Reject]`).
+
+#### C. Multimodal Q&A Results ([`frontend/src/pages/AIQuery.tsx`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/frontend/src/pages/AIQuery.tsx))
+- Display citations with evidence-type badges (`TEXT`, `TABLE`, `VALUE`, `VISUAL`).
+- Visual citations include an inline thumbnail and link to source page.
+- Tabular citations include sheet and cell coordinates.
+- Arithmetic cards explain formula and source cells for calculated metrics.
+
+#### D. Navigation Update ([`frontend/src/components/ProtectedRoute.tsx`](file:///c:/Users/aksha/.gemini/antigravity/scratch/koyla/frontend/src/components/ProtectedRoute.tsx))
+- Add `Evidence` link to top navbar.
 
 ---
 
-## 8. Definition of Done
-The system is considered production-prototype complete when:
-1. User logs in with assigned role and organization scope.
-2. Ingests PDF/DOCX/XLSX/Image; SHA-256 hash is computed; parser/OCR executes locally.
-3. Extracted fields and detected tables are stored with page/span provenance.
-4. Deterministic validation flags cross-document conflicts into the Verification Queue.
-5. Hybrid search retrieves relevant chunks with RRF.
-6. Grounded Q&A answers questions with source citations or cleanly refuses when ungrounded.
-7. Report Studio generates and downloads an actual `.docx` file from validated records.
-8. Human verification approves/corrects pending items with audit logging.
-9. Executive dashboard updates live from actual database calculations.
-10. All 14 routes are fully functional with zero dead buttons or placeholder UI.
+## 5. Verification Plan
+
+### 5.1 Automated Unit & Integration Tests (`backend/tests/test_universal_evidence.py`)
+- Test ingestion of all 8 formats: PDF, DOCX, XLSX, XLS, CSV, JPG, PNG, TXT.
+- Test CSV delimiter detection (comma, tab, semicolon, pipe) and malformed CSV handling.
+- Test Excel multi-sheet parsing and cell/range coordinate preservation.
+- Test direct image parsing into `VisualAsset` and `VISUAL` chunks.
+- Test automatic relationship discovery across records.
+- Test multimodal Q&A retrieval and citation formatting.
+- Test deterministic arithmetic calculations on extracted spreadsheet values.
+- Test security checks: path traversal, malicious formulas, unauthorized evidence access.
+
+### 5.2 Full Backend Regression
+- Run complete test suite:
+  ```bash
+  docker compose exec -e PYTHONPATH=. backend pytest tests/ -q
+  ```
+  Ensure all 185+ tests pass with 0 regressions.
+
+### 5.3 Live Multimodal End-to-End Test & Golden Demo (`backend/tests/verify_phase10_live.py`)
+- Synthetic dataset containing:
+  - `annual_report.pdf` (technical report with geological context)
+  - `production.xlsx` (multi-sheet production workbook with April and May figures)
+  - `mine_data.csv` (CSV operational data with delimiter detection)
+  - `geological_section.png` (direct visual cross-section)
+- Upload all 4 files simultaneously via `ADD EVIDENCE`.
+- Verify automatic processing, evidence counts, and relationship discovery.
+- Execute Golden Demo Query:
+  *"Compare Mine A's May production with April and explain whether the geological report contains evidence relevant to the mine's condition."*
+- Validate that the answer combines:
+  - Numerical calculation (`((May - April) / April) * 100`) with Excel cell provenance
+  - Visual evidence from `geological_section.png` with bounding box
+  - Textual context from `annual_report.pdf`
+- Run Playwright browser automation capturing screenshots of:
+  1. Add Evidence batch processing
+  2. Evidence Control Room with register and filters
+  3. Evidence Inspector Modal with review actions
+  4. Multimodal Q&A response with visual and tabular citations
+
+### 5.4 Git Delivery
+- Git commit: `feat: add universal evidence ingestion and multimodal grounding`
+- Push cleanly to `origin/main`.

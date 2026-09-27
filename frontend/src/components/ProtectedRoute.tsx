@@ -10,7 +10,8 @@ import {
   Compass,
   Layers,
   UploadCloud,
-  CheckCircle
+  CheckCircle,
+  Database
 } from 'lucide-react';
 
 export const ProtectedRoute = () => {
@@ -23,6 +24,7 @@ export const ProtectedRoute = () => {
 
   const navLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+    { to: '/evidence', label: 'Evidence Engine', icon: Database },
     { to: '/reports', label: 'Reports', icon: FileSpreadsheet },
     { to: '/topics', label: 'Topics', icon: Layers },
     { to: '/documents', label: 'Documents', icon: FileText },

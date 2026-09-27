@@ -314,6 +314,15 @@ def process_document(document_id: str, job_id: str):
         
         extraction_pipeline = ExtractionPipeline()
         extraction_run = extraction_pipeline.run_pipeline(db, doc.id, doc.organization_id)
+
+        # 5.5 Phase 10: Cross-Document Relationship Discovery
+        relationships_count = 0
+        try:
+            from app.services.relationships import relationship_discovery_service
+            relationships = relationship_discovery_service.discover_relationships(db, doc.id, doc.organization_id)
+            relationships_count = len(relationships)
+        except Exception as rel_err:
+            logger.warning(f"Relationship discovery error for doc {doc.id}: {rel_err}")
             
         # 6. Finalize Job & Document
         job.status = "COMPLETED"
@@ -337,7 +346,8 @@ def process_document(document_id: str, job_id: str):
                 "visuals": visual_count,
                 "chunks": len(chunks),
                 "ocr_applied": parsed_doc.ocr_applied,
-                "fields_extracted": extraction_run.fields_extracted_count
+                "fields_extracted": extraction_run.fields_extracted_count,
+                "relationships_discovered": relationships_count
             }
         )
         

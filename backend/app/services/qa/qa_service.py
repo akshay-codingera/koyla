@@ -39,6 +39,8 @@ class QACitation(BaseModel):
     excerpt: str
     relevance_score: float
     table_provenance: Optional[Dict[str, Any]] = None
+    visual_provenance: Optional[Dict[str, Any]] = None
+    format_provenance: Optional[Dict[str, Any]] = None
 
 
 class QAResponse(BaseModel):
@@ -215,9 +217,44 @@ class QAService:
             s_tier = item.get("source_tier", "TIER_B")
             c_text = item.get("source_text", "").strip()
             table_info = item.get("provenance", {}).get("table") or item.get("provenance", {}).get("table_info")
+            item_meta = item.get("metadata", {}) or {}
+
+            # Extract visual provenance if chunk is visual or references visual asset
+            visual_info = None
+            if c_type == "VISUAL" or item_meta.get("visual_asset_id"):
+                visual_info = {
+                    "visual_asset_id": item_meta.get("visual_asset_id"),
+                    "visual_type": item_meta.get("visual_type") or item.get("visual_type", "UNKNOWN"),
+                    "figure_number": item_meta.get("figure_number"),
+                    "caption": item_meta.get("caption"),
+                    "bbox": item_meta.get("bbox"),
+                }
+
+            # Extract format-aware provenance (Sheet/Cell, CSV Row/Col)
+            format_info = None
+            if item_meta.get("sheet_name"):
+                format_info = {
+                    "format": "SPREADSHEET",
+                    "sheet_name": item_meta.get("sheet_name"),
+                    "cell_range": item_meta.get("range"),
+                    "provenance_display": f"Sheet: '{item_meta.get('sheet_name')}'"
+                }
+            elif item_meta.get("delimiter") or item_meta.get("csv_row"):
+                format_info = {
+                    "format": "CSV",
+                    "csv_row": item_meta.get("csv_row"),
+                    "csv_col": item_meta.get("csv_col"),
+                    "provenance_display": f"Row: {item_meta.get('csv_row', 1)}, Col: '{item_meta.get('csv_col', '')}'"
+                }
 
             evidence_texts.append(c_text)
             block = f"[{idx}] Source: \"{d_title}\" (Doc ID: {d_id}, Page: {p_num}, Tier: {s_tier})\n"
+            if visual_info:
+                block += f"Visual Diagram: {visual_info['visual_type']} ({visual_info.get('figure_number') or 'Unlabeled'})\n"
+                if visual_info.get("caption"):
+                    block += f"Caption: {visual_info['caption']}\n"
+            if format_info:
+                block += f"Data Location: {format_info.get('provenance_display')}\n"
             if table_info:
                 block += f"Table Part {table_info.get('part_number', 1)} of {table_info.get('total_parts', 1)}"
                 if table_info.get("caption"):
@@ -236,7 +273,9 @@ class QAService:
                 page_number=p_num,
                 excerpt=c_text[:300] + "..." if len(c_text) > 300 else c_text,
                 relevance_score=item.get("rrf_score", 0.0),
-                table_provenance=table_info
+                table_provenance=table_info,
+                visual_provenance=visual_info,
+                format_provenance=format_info
             ))
 
         compiled_context = "=== EVIDENCE CHUNKS ===\n" + "\n".join(evidence_blocks)
