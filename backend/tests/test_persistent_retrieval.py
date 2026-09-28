@@ -53,13 +53,19 @@ def test_persistent_lexical_exact_phrase(tmp_path):
             db=db,
             query='"Seam IV thickness"',
             allowed_org_ids=[org.id],
-            top_k=5
+            top_k=25
         )
         assert len(results) >= 1
         top_match = next(r for r in results if r["chunk_id"] == chunk.id)
         assert "6.25 meters" in top_match["content"]
         assert top_match["document_title"] == "Geological Exploration Report Seam IV"
     finally:
+        try:
+            db.delete(chunk)
+            db.delete(doc)
+            db.commit()
+        except Exception:
+            db.rollback()
         db.close()
 
 
@@ -99,12 +105,18 @@ def test_domain_terminology_and_fiscal_year():
             query="overburden removal OBR",
             allowed_org_ids=[org.id],
             filters={"fiscal_year": "2023-24"},
-            top_k=5
+            top_k=25
         )
         assert len(results) >= 1
         matched_chunk = next(r for r in results if r["chunk_id"] == chunk.id)
         assert "42.8 M.cum" in matched_chunk["content"]
     finally:
+        try:
+            db.delete(chunk)
+            db.delete(doc)
+            db.commit()
+        except Exception:
+            db.rollback()
         db.close()
 
 

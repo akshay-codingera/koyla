@@ -27,6 +27,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from PIL import Image
 
 from app.services.parsers.base import ParsedVisual
+from app.services.visual import get_visual_classifier, validate_bbox
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -123,19 +124,32 @@ class VisualDetector:
         # --- Deduplication: merge overlapping regions ---
         visuals = self._merge_overlapping(visuals, page)
 
-        # --- Layer C: Caption/context classification ---
+        # --- Layer C: Caption/context classification via VisualClassifier abstraction ---
+        classifier = get_visual_classifier()
         for v in visuals:
-            fig_num, caption, vtype, conf = self._classify_from_context(
-                page_text, v.bbox
-            )
+            fig_num, caption = self._extract_figure_and_caption(page_text)
             if fig_num and not v.figure_number:
                 v.figure_number = fig_num
             if caption and not v.caption:
                 v.caption = caption
-            # Upgrade classification if context provides stronger signal
-            if conf > v.classification_confidence:
-                v.visual_type = vtype
-                v.classification_confidence = conf
+
+            cls_result = classifier.classify(
+                image_bytes=v.image_bytes,
+                caption=v.caption,
+                page_text=page_text,
+                bbox=v.bbox,
+                metadata=v.metadata,
+            )
+
+            # Upgrade classification if classifier provides confident signal
+            if cls_result.confidence >= v.classification_confidence:
+                v.visual_type = cls_result.predicted_class
+                v.classification_confidence = cls_result.confidence
+                v.classification_method = cls_result.classifier_name
+
+            v.metadata["review_status"] = cls_result.review_status
+            if cls_result.evidence:
+                v.metadata["classification_evidence"] = cls_result.evidence
 
         return visuals
 
@@ -419,58 +433,53 @@ class VisualDetector:
 
     # ─── Layer C: Caption / Context Classification ───────────────────────
 
+    @staticmethod
+    def _extract_figure_and_caption(page_text: str) -> Tuple[Optional[str], Optional[str]]:
+        """Extracts figure numbering and caption text from page text."""
+        if not page_text:
+            return None, None
+
+        figure_number = None
+        caption = None
+
+        for pattern in FIGURE_NUMBER_PATTERNS:
+            match = pattern.search(page_text)
+            if match:
+                figure_number = match.group(0).strip()
+                break
+
+        cap_match = CAPTION_PATTERN.search(page_text)
+        if cap_match:
+            raw_caption = cap_match.group(1).strip()
+            if ". " in raw_caption:
+                raw_caption = raw_caption[: raw_caption.index(". ") + 1]
+            caption = raw_caption[:250]
+
+        return figure_number, caption
+
     def _classify_from_context(
         self,
         page_text: str,
         bbox: Optional[Dict[str, float]],
     ) -> Tuple[Optional[str], Optional[str], str, float]:
         """
-        Use page text to find figure numbers, captions, and classify visuals.
+        Use page text to find figure numbers, captions, and classify visuals via VisualClassifier.
 
         Returns: (figure_number, caption, visual_type, confidence)
         """
         if not page_text:
             return None, None, "UNKNOWN", 0.0
 
-        figure_number = None
-        caption = None
-        best_type = "UNKNOWN"
-        best_conf = 0.0
+        figure_number, caption = self._extract_figure_and_caption(page_text)
 
-        # Search for figure/plate numbers
-        for pattern in FIGURE_NUMBER_PATTERNS:
-            match = pattern.search(page_text)
-            if match:
-                # Reconstruct the full figure label
-                full_match = match.group(0).strip()
-                figure_number = full_match
-                break
+        classifier = get_visual_classifier()
+        cls_result = classifier.classify(
+            caption=caption,
+            page_text=page_text,
+            bbox=bbox,
+        )
 
-        # Search for caption text
-        cap_match = CAPTION_PATTERN.search(page_text)
-        if cap_match:
-            raw_caption = cap_match.group(1).strip()
-            # Limit caption to first sentence or 200 chars
-            if ". " in raw_caption:
-                raw_caption = raw_caption[: raw_caption.index(". ") + 1]
-            caption = raw_caption[:200]
-
-        # Apply classification rules
-        context_text = (caption or "") + " " + (figure_number or "")
-        # Also check a window of page text for classification
-        search_text = context_text + " " + page_text[:1000]
-
-        type_scores: Dict[str, float] = {}
-        for pattern, vtype, base_conf in CLASSIFICATION_RULES:
-            if pattern.search(search_text):
-                current = type_scores.get(vtype, 0.0)
-                type_scores[vtype] = min(1.0, current + base_conf * 0.5)
-
-        if type_scores:
-            best_type = max(type_scores, key=type_scores.get)
-            best_conf = type_scores[best_type]
-
-        return figure_number, caption, best_type, best_conf
+        return figure_number, caption, cls_result.predicted_class, cls_result.confidence
 
 
 # Module-level singleton

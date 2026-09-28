@@ -137,6 +137,14 @@ class Settings(BaseSettings):
                     "Invalid LDAP configuration: LDAP_SERVER_URL and LDAP_BASE_DN are required when IDENTITY_PROVIDER=ldap."
                 )
 
+        # Phase 7: Visual classifier selection validation
+        valid_classifiers = ("heuristic", "domain_cv")
+        if self.VISUAL_CLASSIFIER.lower().strip() not in valid_classifiers:
+            raise ValueError(
+                f"Invalid VISUAL_CLASSIFIER '{self.VISUAL_CLASSIFIER}'. "
+                f"Supported classifiers: {', '.join(valid_classifiers)}."
+            )
+
         env = self.ENVIRONMENT.lower().strip()
         if env in ("production", "prod"):
             if not self.SECRET_KEY or self.SECRET_KEY in self.INSECURE_SECRETS or len(self.SECRET_KEY) < 32:
@@ -215,9 +223,14 @@ class Settings(BaseSettings):
     ENABLE_GROUNDING_VERIFICATION: bool = True
     MAX_EVIDENCE_CHUNKS: int = 5
 
-    # Phase 9: Visual & Figure Intelligence
+    # Phase 9: Visual & Figure Intelligence & Phase 7 Visual Classifier Hardening
     # NOTE: Confidence thresholds are configurable operational thresholds,
     # NOT guarantees of semantic accuracy.
+    VISUAL_CLASSIFIER: str = "heuristic"  # "heuristic", "domain_cv"
+    VISUAL_HIGH_CONFIDENCE_THRESHOLD: float = 0.70
+    VISUAL_LOW_CONFIDENCE_THRESHOLD: float = 0.40
+    VISUAL_DOMAIN_MODEL_PATH: Optional[str] = None
+    VISUAL_MAX_IMAGE_PIXELS: int = 50_000_000
     VISUAL_OCR_CONFIDENCE_MIN: float = 0.70
     VISUAL_DETECTION_DPI: int = 150
     VISUAL_MIN_IMAGE_SIZE: int = 50   # pixels; skip decorative images smaller than this

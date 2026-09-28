@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from datetime import datetime
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
@@ -77,6 +77,34 @@ class VerificationService:
                     group.resolution_notes = review_notes or f"Resolved via verification task {task.id}"
                 elif action == "DEFER":
                     group.resolution_status = "DEFERRED"
+
+        # Handle linked VisualAsset (Phase 7 Review Workflow)
+        if task.task_type == "VISUAL_REVIEW" and task.target_id:
+            from app.models.visual import VisualAsset, VISUAL_TYPES
+            visual = db.query(VisualAsset).filter(VisualAsset.id == task.target_id).first()
+            if visual:
+                previous_val = visual.visual_type
+                if action == "APPROVE":
+                    visual.verification_status = "VERIFIED"
+                elif action == "CORRECT":
+                    if not corrected_value:
+                        raise ValueError("corrected_value must be provided for CORRECT action on VisualAsset.")
+                    target_type = corrected_value.upper().strip()
+                    if target_type not in VISUAL_TYPES:
+                        raise ValueError(f"Invalid visual type '{corrected_value}'. Must be one of: {', '.join(VISUAL_TYPES)}")
+
+                    orig_meta = dict(visual.metadata_json or {})
+                    orig_meta["original_classification"] = visual.visual_type
+                    orig_meta["original_confidence"] = visual.classification_confidence
+                    orig_meta["correction_notes"] = review_notes
+                    orig_meta["corrected_by"] = user_id
+                    visual.metadata_json = orig_meta
+                    visual.visual_type = target_type
+                    visual.verification_status = "CORRECTED"
+                    task.corrected_value = target_type
+                elif action == "REJECT":
+                    visual.verification_status = "REJECTED"
+                visual.updated_at = datetime.utcnow()
 
         # Write immutable audit log
         log_audit_event(
