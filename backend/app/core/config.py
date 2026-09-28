@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Optional, Dict
 from pydantic_settings import BaseSettings
 import logging
 
@@ -47,6 +47,24 @@ class Settings(BaseSettings):
     CLAMAV_PORT: int = 3310
     CLAMAV_TIMEOUT_SECONDS: float = 5.0
 
+    # Phase 5: Identity Provider & LDAP/AD Abstraction Settings
+    IDENTITY_PROVIDER: str = "local"  # "local" (default) or "ldap"
+    LDAP_SERVER_URL: Optional[str] = None
+    LDAP_BASE_DN: Optional[str] = None
+    LDAP_BIND_DN: Optional[str] = None
+    LDAP_BIND_PASSWORD: Optional[str] = None
+    LDAP_USER_SEARCH_BASE: Optional[str] = None
+    LDAP_USER_SEARCH_FILTER: str = "(&(objectClass=person)(sAMAccountName={username}))"
+    LDAP_GROUP_SEARCH_BASE: Optional[str] = None
+    LDAP_GROUP_SEARCH_FILTER: str = "(&(objectClass=group)(member={user_dn}))"
+    LDAP_USE_TLS: bool = True
+    LDAP_VERIFY_CERT: bool = True
+    LDAP_CA_CERT_PATH: Optional[str] = None
+    LDAP_TIMEOUT_SECONDS: float = 5.0
+    LDAP_GROUP_ROLE_MAPPING: Any = {}
+    LDAP_DEFAULT_ROLE: str = "SUBSIDIARY_ANALYST"
+    LDAP_DEFAULT_ORGANIZATION_ID: Optional[str] = None
+
     @property
     def parsed_cors_origins(self) -> List[str]:
         if isinstance(self.CORS_ORIGINS, str):
@@ -60,11 +78,37 @@ class Settings(BaseSettings):
             return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
         return list(self.CORS_ORIGINS)
 
+    @property
+    def parsed_ldap_group_role_mapping(self) -> dict:
+        if isinstance(self.LDAP_GROUP_ROLE_MAPPING, str):
+            import json
+            try:
+                parsed = json.loads(self.LDAP_GROUP_ROLE_MAPPING)
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception:
+                pass
+        if isinstance(self.LDAP_GROUP_ROLE_MAPPING, dict):
+            return self.LDAP_GROUP_ROLE_MAPPING
+        return {}
+
     def validate_security(self):
         """
         Validates security settings against production environment requirements.
-        Fails fast if production environment is detected with default/insecure secret.
+        Fails fast if production environment is detected with default/insecure secret,
+        or if an invalid identity provider is specified.
         """
+        provider = self.IDENTITY_PROVIDER.lower().strip()
+        if provider not in ("local", "ldap"):
+            raise ValueError(
+                f"Invalid IDENTITY_PROVIDER '{self.IDENTITY_PROVIDER}'. Supported identity providers: 'local', 'ldap'."
+            )
+        if provider == "ldap":
+            if not self.LDAP_SERVER_URL or not self.LDAP_BASE_DN:
+                raise ValueError(
+                    "Invalid LDAP configuration: LDAP_SERVER_URL and LDAP_BASE_DN are required when IDENTITY_PROVIDER=ldap."
+                )
+
         env = self.ENVIRONMENT.lower().strip()
         if env in ("production", "prod"):
             if not self.SECRET_KEY or self.SECRET_KEY in self.INSECURE_SECRETS or len(self.SECRET_KEY) < 32:

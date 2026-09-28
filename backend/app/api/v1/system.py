@@ -135,6 +135,17 @@ def health_check(db: Session = Depends(get_db)):
     except Exception:
         av_status = "DISABLED"
 
+    # 12. Identity Provider check
+    try:
+        from app.services.identity import get_identity_provider
+        id_prov = get_identity_provider()
+        id_health = id_prov.health()
+        id_status = id_health.get("status", "UP")
+        id_type = id_prov.name
+    except Exception as e:
+        id_status = "ERROR"
+        id_type = "unknown"
+
     # Overall Status Calculation
     critical_services = [db_status, vec_status]
     if all(s == "UP" for s in critical_services) and topic_engine_status == "UP" and report_engine_status == "UP":
@@ -162,6 +173,8 @@ def health_check(db: Session = Depends(get_db)):
             "redis": redis_status,
             "workers": worker_status,
             "antivirus": av_status,
+            "identity_provider": id_status,
         },
+        "identity_provider_type": id_type,
         "worker_details": worker_details
     }
