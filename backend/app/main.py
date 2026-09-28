@@ -35,15 +35,25 @@ from app.api.v1 import (
     evidence,
 )
 
+from app.core.middleware import SecurityHeadersMiddleware
+
 app = FastAPI(title=settings.PROJECT_NAME)
 
+# 1. Defensive HTTP Security Headers
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 2. Configurable CORS with explicit trusted origins and credentials support
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.parsed_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
+
+@app.on_event("startup")
+def on_startup():
+    settings.validate_security()
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(system.router, prefix=f"{settings.API_V1_STR}/system", tags=["system"])

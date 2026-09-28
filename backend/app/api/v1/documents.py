@@ -28,7 +28,12 @@ def check_org_access(user: User, org_id: str, db: Session) -> bool:
         return True
     return user.organization_id == org_id
 
-@router.post("/upload", status_code=status.HTTP_201_CREATED)
+from app.core.rate_limit import RateLimiter
+from app.core.config import settings
+
+upload_rate_limiter = RateLimiter(requests_per_minute=settings.RATE_LIMIT_UPLOAD_PER_MINUTE, scope="upload")
+
+@router.post("/upload", status_code=status.HTTP_201_CREATED, dependencies=[Depends(upload_rate_limiter)])
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),

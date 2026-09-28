@@ -51,7 +51,12 @@ def infer_document_type(filename: str, ext: str) -> str:
         return "ANNEXURE_SPREADSHEET"
     return "GEOLOGICAL_REPORT"
 
-@router.post("/upload", response_model=UnifiedEvidenceUploadResponse, status_code=status.HTTP_201_CREATED)
+from app.core.rate_limit import RateLimiter
+from app.core.config import settings
+
+upload_rate_limiter = RateLimiter(requests_per_minute=settings.RATE_LIMIT_UPLOAD_PER_MINUTE, scope="upload")
+
+@router.post("/upload", response_model=UnifiedEvidenceUploadResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(upload_rate_limiter)])
 async def upload_unified_evidence(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),

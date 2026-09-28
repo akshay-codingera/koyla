@@ -127,6 +127,14 @@ def health_check(db: Session = Depends(get_db)):
     except Exception:
         worker_status = "OFFLINE"
 
+    # 11. ClamAV Antivirus Scanner check
+    try:
+        from app.services.security.antivirus import clamav_scanner
+        av_health = clamav_scanner.health()
+        av_status = av_health.get("status", "DISABLED")
+    except Exception:
+        av_status = "DISABLED"
+
     # Overall Status Calculation
     critical_services = [db_status, vec_status]
     if all(s == "UP" for s in critical_services) and topic_engine_status == "UP" and report_engine_status == "UP":
@@ -153,6 +161,7 @@ def health_check(db: Session = Depends(get_db)):
             "report_engine": report_engine_status,
             "redis": redis_status,
             "workers": worker_status,
+            "antivirus": av_status,
         },
         "worker_details": worker_details
     }

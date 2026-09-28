@@ -52,7 +52,11 @@ def get_authorized_org_scope(user: User, requested_org_id: Optional[str] = None)
         return [user_org] if user_org else []
 
 
-@router.post("/query")
+from app.core.rate_limit import RateLimiter
+
+qa_rate_limiter = RateLimiter(requests_per_minute=settings.RATE_LIMIT_QA_PER_MINUTE, scope="qa")
+
+@router.post("/query", dependencies=[Depends(qa_rate_limiter)])
 def execute_qa_query(
     req: QAQueryRequest,
     db: Session = Depends(get_db),

@@ -7,9 +7,13 @@ from app.core.security import verify_password, create_access_token
 from app.schemas.auth import Token
 from app.services.audit_service import log_audit
 
-router = APIRouter()
+from app.core.rate_limit import RateLimiter
+from app.core.config import settings
 
-@router.post("/login", response_model=Token)
+router = APIRouter()
+auth_rate_limiter = RateLimiter(requests_per_minute=settings.RATE_LIMIT_AUTH_PER_MINUTE, scope="auth")
+
+@router.post("/login", response_model=Token, dependencies=[Depends(auth_rate_limiter)])
 def login_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
