@@ -148,7 +148,8 @@ async def upload_document(
     else:
         try:
             from app.tasks.ingestion_tasks import process_document_task
-            process_document_task.delay(doc.id, job.id)
+            from app.core.logging.context import get_request_id
+            process_document_task.delay(doc.id, job.id, request_id=get_request_id())
         except Exception as e:
             logger.warning(f"Could not enqueue Celery task, falling back to background_tasks: {e}")
             background_tasks.add_task(process_document, doc.id, job.id)

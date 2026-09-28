@@ -62,9 +62,10 @@ export const SystemStatus: React.FC = () => {
   const renderBadge = (status: string) => {
     switch (status) {
       case 'UP':
+      case 'HEALTHY':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 font-mono text-[10px] font-bold bg-[#143825] text-[#4ade80] border border-[#225e3d]">
-            <CheckCircle2 className="w-3 h-3" /> UP
+            <CheckCircle2 className="w-3 h-3" /> {status}
           </span>
         );
       case 'DEGRADED':
@@ -74,15 +75,17 @@ export const SystemStatus: React.FC = () => {
           </span>
         );
       case 'OFFLINE':
+      case 'UNAVAILABLE':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 font-mono text-[10px] font-bold bg-[#381a13] text-[#fb923c] border border-[#632b1d]">
-            <XCircle className="w-3 h-3" /> OFFLINE
+            <XCircle className="w-3 h-3" /> {status}
           </span>
         );
       case 'NOT_CONFIGURED':
+      case 'DISABLED':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 font-mono text-[10px] font-bold bg-[#1e242c] text-[#94a3b8] border border-[#333d4b]">
-            NOT CONFIGURED
+            {status.replace('_', ' ')}
           </span>
         );
       case 'DOWN':
@@ -123,6 +126,13 @@ export const SystemStatus: React.FC = () => {
       desc: 'Cosine and L2 vector similarity matching for dense retrieval & semantic chunk search.',
     },
     {
+      key: 'storage',
+      name: 'Storage Subsystem',
+      role: 'Document Repository & Quarantine Vault',
+      icon: Database,
+      desc: 'On-premise file storage with SHA-256 verification and read/write probe diagnostics.',
+    },
+    {
       key: 'ocr_engine',
       name: 'OCR & Document Vision Engine',
       role: 'Scanned Document Digitization',
@@ -142,6 +152,20 @@ export const SystemStatus: React.FC = () => {
       role: 'SmolLM2-135M-Instruct (Ollama Local)',
       icon: Activity,
       desc: 'Local inference daemon on port 11434 with automatic deterministic rule synthesis fallback.',
+    },
+    {
+      key: 'redis',
+      name: 'Redis Cache & Broker',
+      role: 'Distributed In-Memory Store',
+      icon: Server,
+      desc: 'Celery task queue broker and deduplication locking substrate.',
+    },
+    {
+      key: 'workers',
+      name: 'Celery Persistent Workers',
+      role: 'Asynchronous Job Processing',
+      icon: Cpu,
+      desc: 'Background document parsing, OCR, and chunking workers with automated retry.',
     },
     {
       key: 'topic_engine',
