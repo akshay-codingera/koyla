@@ -49,64 +49,76 @@ class DMSAdapter(ExternalSystemAdapter):
         """
         Reports DMS reachability without leaking the bearer/API token.
         """
-        if not self.enabled:
-            return {
-                "system_name": self.system_name,
-                "system_type": self.system_type,
-                "status": AdapterStatus.NOT_CONFIGURED.value,
-                "message": "DMS adapter is disabled in environment configuration.",
-                "is_mock": self.is_mock,
-                "configured": False,
-                "endpoint": None,
-                "tls_verified": self.verify_tls
-            }
+        with self._timed_call("health") as metrics:
+            if not self.enabled:
+                res = {
+                    "system_name": self.system_name,
+                    "system_type": self.system_type,
+                    "status": AdapterStatus.NOT_CONFIGURED.value,
+                    "message": "DMS adapter is disabled in environment configuration.",
+                    "is_mock": self.is_mock,
+                    "configured": False,
+                    "endpoint": None,
+                    "tls_verified": self.verify_tls
+                }
+                metrics["status"] = res["status"]
+                return res
 
-        if not self.is_configured:
-            return {
-                "system_name": self.system_name,
-                "system_type": self.system_type,
-                "status": AdapterStatus.NOT_CONFIGURED.value,
-                "message": "DMS endpoint or authorization token is missing.",
-                "is_mock": self.is_mock,
-                "configured": False,
-                "endpoint": sanitize_url_for_logging(self.endpoint),
-                "tls_verified": self.verify_tls
-            }
+            if not self.is_configured:
+                res = {
+                    "system_name": self.system_name,
+                    "system_type": self.system_type,
+                    "status": AdapterStatus.NOT_CONFIGURED.value,
+                    "message": "DMS endpoint or authorization token is missing.",
+                    "is_mock": self.is_mock,
+                    "configured": False,
+                    "endpoint": sanitize_url_for_logging(self.endpoint),
+                    "tls_verified": self.verify_tls
+                }
+                metrics["status"] = res["status"]
+                return res
 
-        try:
-            valid_url = validate_endpoint_url(self.endpoint, enforce_https=self.verify_tls)
-            return {
-                "system_name": self.system_name,
-                "system_type": self.system_type,
-                "status": AdapterStatus.UNAVAILABLE.value,
-                "message": "DMS endpoint configured, but repository service is unreachable or offline.",
-                "is_mock": self.is_mock,
-                "configured": True,
-                "endpoint": sanitize_url_for_logging(valid_url),
-                "tls_verified": self.verify_tls
-            }
-        except Exception as e:
-            return {
-                "system_name": self.system_name,
-                "system_type": self.system_type,
-                "status": AdapterStatus.ERROR.value,
-                "message": f"DMS configuration security validation error: {str(e)}",
-                "is_mock": self.is_mock,
-                "configured": False,
-                "endpoint": sanitize_url_for_logging(self.endpoint),
-                "tls_verified": self.verify_tls
-            }
+            try:
+                valid_url = validate_endpoint_url(self.endpoint, enforce_https=self.verify_tls)
+                res = {
+                    "system_name": self.system_name,
+                    "system_type": self.system_type,
+                    "status": AdapterStatus.UNAVAILABLE.value,
+                    "message": "DMS endpoint configured, but repository service is unreachable or offline.",
+                    "is_mock": self.is_mock,
+                    "configured": True,
+                    "endpoint": sanitize_url_for_logging(valid_url),
+                    "tls_verified": self.verify_tls
+                }
+                metrics["status"] = res["status"]
+                return res
+            except Exception as e:
+                res = {
+                    "system_name": self.system_name,
+                    "system_type": self.system_type,
+                    "status": AdapterStatus.ERROR.value,
+                    "message": f"DMS configuration security validation error: {str(e)}",
+                    "is_mock": self.is_mock,
+                    "configured": False,
+                    "endpoint": sanitize_url_for_logging(self.endpoint),
+                    "tls_verified": self.verify_tls
+                }
+                metrics["status"] = res["status"]
+                return res
 
     def connect(self) -> bool:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "DMS repository is not configured. Provide DMS_ENDPOINT and credentials via environment.",
+        with self._timed_call("connect") as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "DMS repository is not configured. Provide DMS_ENDPOINT and credentials via environment.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                f"Cannot connect to DMS at '{sanitize_url_for_logging(self.endpoint)}': Live enterprise connection not established.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            f"Cannot connect to DMS at '{sanitize_url_for_logging(self.endpoint)}': Live enterprise connection not established.",
-            system_name=self.system_name
-        )
 
     def fetch_documents(
         self,
@@ -114,15 +126,18 @@ class DMSAdapter(ExternalSystemAdapter):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 50
     ) -> List[ExternalDocument]:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "Cannot fetch documents: DMS adapter is not configured.",
+        with self._timed_call("fetch_documents", extra={"limit": limit}) as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "Cannot fetch documents: DMS adapter is not configured.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                "Live DMS repository connection is unavailable.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            "Live DMS repository connection is unavailable.",
-            system_name=self.system_name
-        )
 
     def fetch_records(
         self,
@@ -130,41 +145,50 @@ class DMSAdapter(ExternalSystemAdapter):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 50
     ) -> List[ExternalRecord]:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "Cannot fetch records: DMS adapter is not configured.",
+        with self._timed_call("fetch_records", extra={"limit": limit}) as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "Cannot fetch records: DMS adapter is not configured.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                "Live DMS repository connection is unavailable.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            "Live DMS repository connection is unavailable.",
-            system_name=self.system_name
-        )
 
     def get_metadata(self, external_id: str) -> Optional[ExternalMetadata]:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "Cannot retrieve metadata: DMS adapter is not configured.",
+        with self._timed_call("get_metadata", extra={"external_id": external_id}) as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "Cannot retrieve metadata: DMS adapter is not configured.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                "Live DMS repository connection is unavailable.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            "Live DMS repository connection is unavailable.",
-            system_name=self.system_name
-        )
 
     def fetch_incremental(
         self,
         since: datetime,
         limit: int = 50
     ) -> Dict[str, Any]:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "Cannot fetch incremental sync: DMS adapter is not configured.",
+        with self._timed_call("fetch_incremental", extra={"limit": limit}) as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "Cannot fetch incremental sync: DMS adapter is not configured.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                "Live DMS repository connection is unavailable.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            "Live DMS repository connection is unavailable.",
-            system_name=self.system_name
-        )
 
 
 class MockDMSAdapter(DMSAdapter):
@@ -186,19 +210,23 @@ class MockDMSAdapter(DMSAdapter):
         return True
 
     def health(self) -> Dict[str, Any]:
-        return {
-            "system_name": self.system_name,
-            "system_type": self.system_type,
-            "status": AdapterStatus.MOCK_OPERATIONAL.value,
-            "message": "Deterministic local mock DMS operational (simulated document archive).",
-            "is_mock": True,
-            "configured": True,
-            "endpoint": self.endpoint,
-            "tls_verified": True
-        }
+        with self._timed_call("health") as metrics:
+            metrics["status"] = AdapterStatus.MOCK_OPERATIONAL.value
+            return {
+                "system_name": self.system_name,
+                "system_type": self.system_type,
+                "status": AdapterStatus.MOCK_OPERATIONAL.value,
+                "message": "Deterministic local mock DMS operational (simulated document archive).",
+                "is_mock": True,
+                "configured": True,
+                "endpoint": self.endpoint,
+                "tls_verified": True
+            }
 
     def connect(self) -> bool:
-        return True
+        with self._timed_call("connect") as metrics:
+            metrics["status"] = "CONNECTED"
+            return True
 
     def fetch_documents(
         self,
@@ -206,59 +234,61 @@ class MockDMSAdapter(DMSAdapter):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 50
     ) -> List[ExternalDocument]:
-        now = datetime.utcnow()
-        mock_docs = [
-            {
-                "id": "DMS-GEOL-2026-BH-402",
-                "title": "Borehole Geophysical Stratigraphy Exploration Log BH-402",
-                "type": "geological_log",
-                "file_name": "CMPDI_RI_III_BH402_Stratigraphy.pdf",
-                "mime": "application/pdf",
-                "org_id": "CMPDI",
-                "mine_id": "NORTH_KARANPURA",
-                "block_id": "CHATI_BARIATU",
-                "content": b"%PDF-1.4 Mock DMS Borehole Geophysical Stratigraphy Exploration Log BH-402"
-            },
-            {
-                "id": "DMS-ENV-2026-EC-084",
-                "title": "Ministry Environmental Clearance & Water Monitoring Baseline",
-                "type": "environmental_clearance",
-                "file_name": "MoEFCC_EC_Compliance_Jharia_V.pdf",
-                "mime": "application/pdf",
-                "org_id": "BCCL",
-                "mine_id": "JHARIA_BLOCK_V",
-                "block_id": "SECTOR_CENTRAL",
-                "content": b"%PDF-1.4 Mock DMS Statutory Environmental Clearance Letter and Water Quality Data"
-            }
-        ]
+        with self._timed_call("fetch_documents", extra={"limit": limit}) as metrics:
+            now = datetime.utcnow()
+            mock_docs = [
+                {
+                    "id": "DMS-GEOL-2026-BH-402",
+                    "title": "Borehole Geophysical Stratigraphy Exploration Log BH-402",
+                    "type": "geological_log",
+                    "file_name": "CMPDI_RI_III_BH402_Stratigraphy.pdf",
+                    "mime": "application/pdf",
+                    "org_id": "CMPDI",
+                    "mine_id": "NORTH_KARANPURA",
+                    "block_id": "CHATI_BARIATU",
+                    "content": b"%PDF-1.4 Mock DMS Borehole Geophysical Stratigraphy Exploration Log BH-402"
+                },
+                {
+                    "id": "DMS-ENV-2026-EC-084",
+                    "title": "Ministry Environmental Clearance & Water Monitoring Baseline",
+                    "type": "environmental_clearance",
+                    "file_name": "MoEFCC_EC_Compliance_Jharia_V.pdf",
+                    "mime": "application/pdf",
+                    "org_id": "BCCL",
+                    "mine_id": "JHARIA_BLOCK_V",
+                    "block_id": "SECTOR_CENTRAL",
+                    "content": b"%PDF-1.4 Mock DMS Statutory Environmental Clearance Letter and Water Quality Data"
+                }
+            ]
 
-        documents = []
-        for item in mock_docs[:limit]:
-            meta = ExternalMetadata(
-                source_system=self.system_name,
-                external_id=item["id"],
-                created_at=now - timedelta(days=12),
-                updated_at=now - timedelta(days=2),
-                fetched_at=now,
-                organization_id=item["org_id"],
-                mine_id=item["mine_id"],
-                block_id=item["block_id"],
-                source_uri=f"{self.endpoint}/documents/{item['id']}/download",
-                raw_properties={"repository_folder": "/Geology/Exploration/2026", "version": "1.2"},
-                provenance={"adapter": "MockDMSAdapter", "classification": "RESTRICTED"}
-            )
-            documents.append(ExternalDocument(
-                source_system=self.system_name,
-                external_id=item["id"],
-                document_type=item["type"],
-                title=item["title"],
-                file_name=item["file_name"],
-                mime_type=item["mime"],
-                content_bytes=item["content"],
-                content_url=meta.source_uri,
-                metadata=meta
-            ))
-        return documents
+            documents = []
+            for item in mock_docs[:limit]:
+                meta = ExternalMetadata(
+                    source_system=self.system_name,
+                    external_id=item["id"],
+                    created_at=now - timedelta(days=12),
+                    updated_at=now - timedelta(days=2),
+                    fetched_at=now,
+                    organization_id=item["org_id"],
+                    mine_id=item["mine_id"],
+                    block_id=item["block_id"],
+                    source_uri=f"{self.endpoint}/documents/{item['id']}/download",
+                    raw_properties={"repository_folder": "/Geology/Exploration/2026", "version": "1.2"},
+                    provenance={"adapter": "MockDMSAdapter", "classification": "RESTRICTED"}
+                )
+                documents.append(ExternalDocument(
+                    source_system=self.system_name,
+                    external_id=item["id"],
+                    document_type=item["type"],
+                    title=item["title"],
+                    file_name=item["file_name"],
+                    mime_type=item["mime"],
+                    content_bytes=item["content"],
+                    content_url=meta.source_uri,
+                    metadata=meta
+                ))
+            metrics["result_count"] = len(documents)
+            return documents
 
     def fetch_records(
         self,
@@ -266,56 +296,64 @@ class MockDMSAdapter(DMSAdapter):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 50
     ) -> List[ExternalRecord]:
-        now = datetime.utcnow()
-        rec_id = "DMS-CATALOG-ENTRY-001"
-        meta = ExternalMetadata(
-            source_system=self.system_name,
-            external_id=rec_id,
-            created_at=now - timedelta(days=3),
-            updated_at=now,
-            fetched_at=now,
-            organization_id="CMPDI",
-            source_uri=f"{self.endpoint}/catalog/{rec_id}",
-            provenance={"adapter": "MockDMSAdapter"}
-        )
-        return [ExternalRecord(
-            source_system=self.system_name,
-            external_id=rec_id,
-            record_type="dms_index_entry",
-            title="DMS Master Document Archive Catalog Metadata",
-            data={
-                "total_repository_items": 1420,
-                "storage_pool": "CMPDI_VAULT_HOT_01",
-                "retention_policy_years": 25,
-                "encryption_at_rest": "AES-256"
-            },
-            metadata=meta
-        )]
+        with self._timed_call("fetch_records", extra={"limit": limit}) as metrics:
+            now = datetime.utcnow()
+            rec_id = "DMS-CATALOG-ENTRY-001"
+            meta = ExternalMetadata(
+                source_system=self.system_name,
+                external_id=rec_id,
+                created_at=now - timedelta(days=3),
+                updated_at=now,
+                fetched_at=now,
+                organization_id="CMPDI",
+                source_uri=f"{self.endpoint}/catalog/{rec_id}",
+                provenance={"adapter": "MockDMSAdapter"}
+            )
+            records = [ExternalRecord(
+                source_system=self.system_name,
+                external_id=rec_id,
+                record_type="dms_index_entry",
+                title="DMS Master Document Archive Catalog Metadata",
+                data={
+                    "total_repository_items": 1420,
+                    "storage_pool": "CMPDI_VAULT_HOT_01",
+                    "retention_policy_years": 25,
+                    "encryption_at_rest": "AES-256"
+                },
+                metadata=meta
+            )]
+            metrics["result_count"] = len(records)
+            return records
 
     def get_metadata(self, external_id: str) -> Optional[ExternalMetadata]:
-        now = datetime.utcnow()
-        return ExternalMetadata(
-            source_system=self.system_name,
-            external_id=external_id,
-            created_at=now - timedelta(days=5),
-            updated_at=now,
-            fetched_at=now,
-            organization_id="CMPDI",
-            source_uri=f"{self.endpoint}/metadata/{external_id}",
-            provenance={"adapter": "MockDMSAdapter"}
-        )
+        with self._timed_call("get_metadata", extra={"external_id": external_id}) as metrics:
+            now = datetime.utcnow()
+            metrics["found"] = True
+            return ExternalMetadata(
+                source_system=self.system_name,
+                external_id=external_id,
+                created_at=now - timedelta(days=5),
+                updated_at=now,
+                fetched_at=now,
+                organization_id="CMPDI",
+                source_uri=f"{self.endpoint}/metadata/{external_id}",
+                provenance={"adapter": "MockDMSAdapter"}
+            )
 
     def fetch_incremental(
         self,
         since: datetime,
         limit: int = 50
     ) -> Dict[str, Any]:
-        docs = self.fetch_documents(limit=limit)
-        records = self.fetch_records(limit=limit)
-        return {
-            "source_system": self.system_name,
-            "since": since.isoformat(),
-            "documents": [d.to_dict() for d in docs],
-            "records": [r.to_dict() for r in records],
-            "cursor": datetime.utcnow().isoformat()
-        }
+        with self._timed_call("fetch_incremental", extra={"limit": limit}) as metrics:
+            docs = self.fetch_documents(limit=limit)
+            records = self.fetch_records(limit=limit)
+            metrics["documents_count"] = len(docs)
+            metrics["records_count"] = len(records)
+            return {
+                "source_system": self.system_name,
+                "since": since.isoformat(),
+                "documents": [d.to_dict() for d in docs],
+                "records": [r.to_dict() for r in records],
+                "cursor": datetime.utcnow().isoformat()
+            }

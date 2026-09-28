@@ -1,6 +1,7 @@
 import traceback
 import hashlib
 from datetime import datetime
+from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.document import Document, ProcessingJob, DocumentPage, Table, TableRow
@@ -15,6 +16,8 @@ from app.services.extraction.pipeline import ExtractionPipeline
 from app.services.audit import log_audit_event
 from app.services.storage import storage_service
 from app.core.config import settings
+from app.core.logging.timing import timed_operation
+from app.core.logging.context import set_document_id, set_job_id
 from PIL import Image
 import io
 import logging
@@ -27,12 +30,38 @@ def process_document(document_id: str, job_id: str, raise_on_error: bool = False
     Executes parsing, table continuation detection, structure-preserving chunking,
     structured extraction, domain validation, and reconciliation.
     """
+    set_document_id(document_id)
+    set_job_id(job_id)
+
+    with timed_operation(
+        logger,
+        "document_ingestion",
+        extra={"document_id": document_id, "job_id": job_id}
+    ) as op_metrics:
+        _process_document_internal(
+            document_id=document_id,
+            job_id=job_id,
+            raise_on_error=raise_on_error,
+            op_metrics=op_metrics
+        )
+
+
+def _process_document_internal(
+    document_id: str,
+    job_id: str,
+    raise_on_error: bool = False,
+    op_metrics: Optional[Dict[str, Any]] = None
+):
     db: Session = SessionLocal()
+    job = None
+    doc = None
     try:
         job = db.query(ProcessingJob).filter(ProcessingJob.id == job_id).first()
         doc = db.query(Document).filter(Document.id == document_id).first()
         
         if not job or not doc:
+            if op_metrics is not None:
+                op_metrics["status"] = "NOT_FOUND"
             return
             
         job.status = "PROCESSING"
@@ -350,10 +379,21 @@ def process_document(document_id: str, job_id: str, raise_on_error: bool = False
                 "relationships_discovered": relationships_count
             }
         )
+
+        if op_metrics is not None:
+            op_metrics["pages"] = len(parsed_doc.pages)
+            op_metrics["tables"] = len(parsed_doc.tables)
+            op_metrics["visuals"] = visual_count
+            op_metrics["chunks"] = len(chunks)
+            op_metrics["ocr_applied"] = parsed_doc.ocr_applied
+            op_metrics["status"] = "COMPLETED"
         
     except Exception as e:
         db.rollback()
         err = traceback.format_exc()
+        if op_metrics is not None:
+            op_metrics["status"] = "FAILED"
+            op_metrics["error"] = str(e)
         if job:
             job.status = "FAILED"
             job.error_message = str(e)

@@ -7,6 +7,7 @@ plate schedules, and execution undertakings without fake seals or approval marks
 """
 import os
 import hashlib
+import logging
 from datetime import datetime
 from typing import Tuple, Dict, Any
 from docx import Document
@@ -18,6 +19,9 @@ from docx.oxml.ns import qn
 
 from app.models.report import Report
 from app.services.reports.narrative import OFFICIAL_UNAVAILABLE_NOTICE
+from app.core.logging.timing import timed_operation
+
+logger = logging.getLogger(__name__)
 
 REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
@@ -40,6 +44,23 @@ class ReportDocxRenderer:
         Renders a complete, statutory-compliant DOCX document for the report instance.
         Returns (file_path, file_size_bytes, sha256_hash).
         """
+        with timed_operation(
+            logger,
+            "report_generation",
+            extra={
+                "report_id": getattr(report, "id", None),
+                "version_number": getattr(report, "version_number", None),
+                "block_name": getattr(report, "block_name", None),
+                "mine_name": getattr(report, "mine_name", None),
+            }
+        ) as metrics:
+            file_path, file_size, sha256_hash = cls._render_report_docx_internal(report)
+            metrics["file_size_bytes"] = file_size
+            metrics["sha256_hash"] = sha256_hash[:16] + "..."
+            return file_path, file_size, sha256_hash
+
+    @classmethod
+    def _render_report_docx_internal(cls, report: Report) -> Tuple[str, int, str]:
         doc = Document()
 
         # Page Setup (A4 Margins: 1 inch)

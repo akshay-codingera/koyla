@@ -1,11 +1,16 @@
 import hashlib
+import logging
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
 
 from app.services.adapters.security import sanitize_credentials
+from app.core.logging.timing import timed_operation
+
+logger = logging.getLogger(__name__)
 
 
 class AdapterStatus(str, Enum):
@@ -157,6 +162,26 @@ class ExternalSystemAdapter(ABC):
     system_name: str = "base"
     system_type: str = "generic"
     is_mock: bool = False
+
+    @contextmanager
+    def _timed_call(self, operation: str, extra: Optional[Dict[str, Any]] = None):
+        """
+        Unified timing and traceability context for external enterprise adapter operations.
+        Measures real execution time and emits structured JSON logs.
+        Truthfully records unconfigured/disabled posture without fabricating latency.
+        Strictly prevents credential or payload leakage.
+        """
+        payload = {
+            "adapter": self.system_name,
+            "operation": operation,
+            "is_mock": getattr(self, "is_mock", False),
+            "is_configured": getattr(self, "is_configured", False),
+        }
+        if extra:
+            payload.update(sanitize_credentials(extra))
+        event_name = f"{self.system_name}_adapter_call"
+        with timed_operation(logger, event_name, extra=payload) as metrics:
+            yield metrics
 
     @property
     @abstractmethod

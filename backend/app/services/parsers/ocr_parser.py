@@ -1,8 +1,12 @@
 import os
+import logging
 from pathlib import Path
 from typing import Optional, Tuple
 from PIL import Image, ImageEnhance, ImageFilter
 from app.services.parsers.base import BaseParser, ParsedDocument, ParsedPage, ParsedTable
+from app.core.logging.timing import timed_operation
+
+logger = logging.getLogger(__name__)
 
 class OCRParser(BaseParser):
     def __init__(self):
@@ -39,26 +43,42 @@ class OCRParser(BaseParser):
         Performs OCR on a PIL Image.
         Returns: (text, confidence, success)
         """
-        if not self.check_tesseract_available():
-            return (
-                "[OCR Notice: Tesseract engine not found on system PATH. OCR processing skipped for this image/scan.]",
-                0.0,
-                False
-            )
-        
-        try:
-            import pytesseract
-            preprocessed = self.preprocess_image(image)
-            data = pytesseract.image_to_data(preprocessed, output_type=pytesseract.Output.DICT)
+        with timed_operation(
+            logger,
+            "ocr_extraction",
+            extra={
+                "width": getattr(image, "width", 0),
+                "height": getattr(image, "height", 0),
+            }
+        ) as metrics:
+            if not self.check_tesseract_available():
+                metrics["status"] = "SKIPPED_UNAVAILABLE"
+                metrics["success"] = False
+                return (
+                    "[OCR Notice: Tesseract engine not found on system PATH. OCR processing skipped for this image/scan.]",
+                    0.0,
+                    False
+                )
             
-            # Calculate average confidence for valid words
-            confidences = [int(c) for c in data.get("conf", []) if str(c).isdigit() and int(c) >= 0]
-            avg_conf = (sum(confidences) / len(confidences)) / 100.0 if confidences else 0.85
-            
-            text = pytesseract.image_to_string(preprocessed).strip()
-            return text, avg_conf, True
-        except Exception as e:
-            return f"[OCR Error: {str(e)}]", 0.0, False
+            try:
+                import pytesseract
+                preprocessed = self.preprocess_image(image)
+                data = pytesseract.image_to_data(preprocessed, output_type=pytesseract.Output.DICT)
+                
+                # Calculate average confidence for valid words
+                confidences = [int(c) for c in data.get("conf", []) if str(c).isdigit() and int(c) >= 0]
+                avg_conf = (sum(confidences) / len(confidences)) / 100.0 if confidences else 0.85
+                
+                text = pytesseract.image_to_string(preprocessed).strip()
+                metrics["engine"] = "tesseract"
+                metrics["confidence"] = round(avg_conf, 4)
+                metrics["text_length"] = len(text)
+                metrics["success"] = True
+                return text, avg_conf, True
+            except Exception as e:
+                metrics["error"] = str(e)
+                metrics["success"] = False
+                return f"[OCR Error: {str(e)}]", 0.0, False
 
     def _classify_image(self, filename: str, ocr_text: str) -> Tuple[Optional[str], Optional[str], str, float]:
         """

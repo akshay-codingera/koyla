@@ -48,64 +48,76 @@ class CoalNetAdapter(ExternalSystemAdapter):
         """
         Reports CoalNet reachability without disclosing the API key.
         """
-        if not self.enabled:
-            return {
-                "system_name": self.system_name,
-                "system_type": self.system_type,
-                "status": AdapterStatus.NOT_CONFIGURED.value,
-                "message": "CoalNet adapter is disabled in environment configuration.",
-                "is_mock": self.is_mock,
-                "configured": False,
-                "endpoint": None,
-                "tls_verified": self.verify_tls
-            }
+        with self._timed_call("health") as metrics:
+            if not self.enabled:
+                res = {
+                    "system_name": self.system_name,
+                    "system_type": self.system_type,
+                    "status": AdapterStatus.NOT_CONFIGURED.value,
+                    "message": "CoalNet adapter is disabled in environment configuration.",
+                    "is_mock": self.is_mock,
+                    "configured": False,
+                    "endpoint": None,
+                    "tls_verified": self.verify_tls
+                }
+                metrics["status"] = res["status"]
+                return res
 
-        if not self.is_configured:
-            return {
-                "system_name": self.system_name,
-                "system_type": self.system_type,
-                "status": AdapterStatus.NOT_CONFIGURED.value,
-                "message": "CoalNet endpoint or API authentication key is missing.",
-                "is_mock": self.is_mock,
-                "configured": False,
-                "endpoint": sanitize_url_for_logging(self.endpoint),
-                "tls_verified": self.verify_tls
-            }
+            if not self.is_configured:
+                res = {
+                    "system_name": self.system_name,
+                    "system_type": self.system_type,
+                    "status": AdapterStatus.NOT_CONFIGURED.value,
+                    "message": "CoalNet endpoint or API authentication key is missing.",
+                    "is_mock": self.is_mock,
+                    "configured": False,
+                    "endpoint": sanitize_url_for_logging(self.endpoint),
+                    "tls_verified": self.verify_tls
+                }
+                metrics["status"] = res["status"]
+                return res
 
-        try:
-            valid_url = validate_endpoint_url(self.endpoint, enforce_https=self.verify_tls)
-            return {
-                "system_name": self.system_name,
-                "system_type": self.system_type,
-                "status": AdapterStatus.UNAVAILABLE.value,
-                "message": "CoalNet endpoint configured, but live service is unreachable or offline.",
-                "is_mock": self.is_mock,
-                "configured": True,
-                "endpoint": sanitize_url_for_logging(valid_url),
-                "tls_verified": self.verify_tls
-            }
-        except Exception as e:
-            return {
-                "system_name": self.system_name,
-                "system_type": self.system_type,
-                "status": AdapterStatus.ERROR.value,
-                "message": f"CoalNet configuration security validation error: {str(e)}",
-                "is_mock": self.is_mock,
-                "configured": False,
-                "endpoint": sanitize_url_for_logging(self.endpoint),
-                "tls_verified": self.verify_tls
-            }
+            try:
+                valid_url = validate_endpoint_url(self.endpoint, enforce_https=self.verify_tls)
+                res = {
+                    "system_name": self.system_name,
+                    "system_type": self.system_type,
+                    "status": AdapterStatus.UNAVAILABLE.value,
+                    "message": "CoalNet endpoint configured, but live service is unreachable or offline.",
+                    "is_mock": self.is_mock,
+                    "configured": True,
+                    "endpoint": sanitize_url_for_logging(valid_url),
+                    "tls_verified": self.verify_tls
+                }
+                metrics["status"] = res["status"]
+                return res
+            except Exception as e:
+                res = {
+                    "system_name": self.system_name,
+                    "system_type": self.system_type,
+                    "status": AdapterStatus.ERROR.value,
+                    "message": f"CoalNet configuration security validation error: {str(e)}",
+                    "is_mock": self.is_mock,
+                    "configured": False,
+                    "endpoint": sanitize_url_for_logging(self.endpoint),
+                    "tls_verified": self.verify_tls
+                }
+                metrics["status"] = res["status"]
+                return res
 
     def connect(self) -> bool:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "CoalNet system is not configured. Provide COALNET_ENDPOINT and credentials via environment.",
+        with self._timed_call("connect") as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "CoalNet system is not configured. Provide COALNET_ENDPOINT and credentials via environment.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                f"Cannot connect to CoalNet at '{sanitize_url_for_logging(self.endpoint)}': Live enterprise connection not established.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            f"Cannot connect to CoalNet at '{sanitize_url_for_logging(self.endpoint)}': Live enterprise connection not established.",
-            system_name=self.system_name
-        )
 
     def fetch_documents(
         self,
@@ -113,15 +125,18 @@ class CoalNetAdapter(ExternalSystemAdapter):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 50
     ) -> List[ExternalDocument]:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "Cannot fetch documents: CoalNet adapter is not configured.",
+        with self._timed_call("fetch_documents", extra={"limit": limit}) as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "Cannot fetch documents: CoalNet adapter is not configured.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                "Live CoalNet system connection is unavailable.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            "Live CoalNet system connection is unavailable.",
-            system_name=self.system_name
-        )
 
     def fetch_records(
         self,
@@ -129,41 +144,50 @@ class CoalNetAdapter(ExternalSystemAdapter):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 50
     ) -> List[ExternalRecord]:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "Cannot fetch records: CoalNet adapter is not configured.",
+        with self._timed_call("fetch_records", extra={"limit": limit}) as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "Cannot fetch records: CoalNet adapter is not configured.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                "Live CoalNet system connection is unavailable.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            "Live CoalNet system connection is unavailable.",
-            system_name=self.system_name
-        )
 
     def get_metadata(self, external_id: str) -> Optional[ExternalMetadata]:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "Cannot retrieve metadata: CoalNet adapter is not configured.",
+        with self._timed_call("get_metadata", extra={"external_id": external_id}) as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "Cannot retrieve metadata: CoalNet adapter is not configured.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                "Live CoalNet system connection is unavailable.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            "Live CoalNet system connection is unavailable.",
-            system_name=self.system_name
-        )
 
     def fetch_incremental(
         self,
         since: datetime,
         limit: int = 50
     ) -> Dict[str, Any]:
-        if not self.is_configured:
-            raise ExternalSystemNotConfiguredError(
-                "Cannot fetch incremental sync: CoalNet adapter is not configured.",
+        with self._timed_call("fetch_incremental", extra={"limit": limit}) as metrics:
+            if not self.is_configured:
+                metrics["status"] = "NOT_CONFIGURED"
+                raise ExternalSystemNotConfiguredError(
+                    "Cannot fetch incremental sync: CoalNet adapter is not configured.",
+                    system_name=self.system_name
+                )
+            metrics["status"] = "UNAVAILABLE"
+            raise ExternalSystemUnavailableError(
+                "Live CoalNet system connection is unavailable.",
                 system_name=self.system_name
             )
-        raise ExternalSystemUnavailableError(
-            "Live CoalNet system connection is unavailable.",
-            system_name=self.system_name
-        )
 
 
 class MockCoalNetAdapter(CoalNetAdapter):
@@ -185,19 +209,23 @@ class MockCoalNetAdapter(CoalNetAdapter):
         return True
 
     def health(self) -> Dict[str, Any]:
-        return {
-            "system_name": self.system_name,
-            "system_type": self.system_type,
-            "status": AdapterStatus.MOCK_OPERATIONAL.value,
-            "message": "Deterministic local mock CoalNet operational (simulated dispatch network).",
-            "is_mock": True,
-            "configured": True,
-            "endpoint": self.endpoint,
-            "tls_verified": True
-        }
+        with self._timed_call("health") as metrics:
+            metrics["status"] = AdapterStatus.MOCK_OPERATIONAL.value
+            return {
+                "system_name": self.system_name,
+                "system_type": self.system_type,
+                "status": AdapterStatus.MOCK_OPERATIONAL.value,
+                "message": "Deterministic local mock CoalNet operational (simulated dispatch network).",
+                "is_mock": True,
+                "configured": True,
+                "endpoint": self.endpoint,
+                "tls_verified": True
+            }
 
     def connect(self) -> bool:
-        return True
+        with self._timed_call("connect") as metrics:
+            metrics["status"] = "CONNECTED"
+            return True
 
     def fetch_records(
         self,
@@ -205,71 +233,73 @@ class MockCoalNetAdapter(CoalNetAdapter):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 50
     ) -> List[ExternalRecord]:
-        now = datetime.utcnow()
-        mock_dispatches = [
-            {
-                "id": "CN-RAKE-2026-0418",
-                "title": "CoalNet Rail Rake Despatch - Kusmunda Siding to NTPC Korba",
-                "type": "rake_dispatch",
-                "org_id": "SECL",
-                "mine_id": "KUSMUNDA_OC",
-                "block_id": "BLOCK_SOUTH",
-                "data": {
-                    "siding_code": "SDG-KUS-01",
-                    "destination_consumer": "NTPC_KORBA_STPS",
-                    "coal_grade": "G11",
-                    "wagon_type": "BOXN",
-                    "wagon_count": 58,
-                    "gross_weight_mt": 5120.4,
-                    "tare_weight_mt": 1284.2,
-                    "net_weight_mt": 3836.2,
-                    "dispatch_timestamp": (now - timedelta(hours=6)).isoformat(),
-                    "challan_number": "CH-2026-99412"
+        with self._timed_call("fetch_records", extra={"limit": limit}) as metrics:
+            now = datetime.utcnow()
+            mock_dispatches = [
+                {
+                    "id": "CN-RAKE-2026-0418",
+                    "title": "CoalNet Rail Rake Despatch - Kusmunda Siding to NTPC Korba",
+                    "type": "rake_dispatch",
+                    "org_id": "SECL",
+                    "mine_id": "KUSMUNDA_OC",
+                    "block_id": "BLOCK_SOUTH",
+                    "data": {
+                        "siding_code": "SDG-KUS-01",
+                        "destination_consumer": "NTPC_KORBA_STPS",
+                        "coal_grade": "G11",
+                        "wagon_type": "BOXN",
+                        "wagon_count": 58,
+                        "gross_weight_mt": 5120.4,
+                        "tare_weight_mt": 1284.2,
+                        "net_weight_mt": 3836.2,
+                        "dispatch_timestamp": (now - timedelta(hours=6)).isoformat(),
+                        "challan_number": "CH-2026-99412"
+                    }
+                },
+                {
+                    "id": "CN-ROAD-2026-1189",
+                    "title": "CoalNet Road Weighbridge Despatch - Piparwar Pithead",
+                    "type": "road_dispatch",
+                    "org_id": "CCL",
+                    "mine_id": "PIPARWAR_OCP",
+                    "block_id": "BLOCK_WEST",
+                    "data": {
+                        "weighbridge_id": "WB-CCL-PIP-03",
+                        "truck_registration": "JH-01-AZ-9912",
+                        "destination_consumer": "Tenughat TPS",
+                        "coal_grade": "G12",
+                        "net_weight_mt": 34.85,
+                        "dispatch_timestamp": (now - timedelta(hours=2)).isoformat(),
+                        "gate_pass_no": "GP-441208"
+                    }
                 }
-            },
-            {
-                "id": "CN-ROAD-2026-1189",
-                "title": "CoalNet Road Weighbridge Despatch - Piparwar Pithead",
-                "type": "road_dispatch",
-                "org_id": "CCL",
-                "mine_id": "PIPARWAR_OCP",
-                "block_id": "BLOCK_WEST",
-                "data": {
-                    "weighbridge_id": "WB-CCL-PIP-03",
-                    "truck_registration": "JH-01-AZ-9912",
-                    "destination_consumer": "Tenughat TPS",
-                    "coal_grade": "G12",
-                    "net_weight_mt": 34.85,
-                    "dispatch_timestamp": (now - timedelta(hours=2)).isoformat(),
-                    "gate_pass_no": "GP-441208"
-                }
-            }
-        ]
+            ]
 
-        records = []
-        for item in mock_dispatches[:limit]:
-            meta = ExternalMetadata(
-                source_system=self.system_name,
-                external_id=item["id"],
-                created_at=now - timedelta(hours=8),
-                updated_at=now - timedelta(hours=2),
-                fetched_at=now,
-                organization_id=item["org_id"],
-                mine_id=item["mine_id"],
-                block_id=item["block_id"],
-                source_uri=f"{self.endpoint}/dispatches/{item['id']}",
-                raw_properties={"weighbridge_calibration_date": "2026-01-15", "tamper_seal_ok": True},
-                provenance={"adapter": "MockCoalNetAdapter", "environment": "simulated"}
-            )
-            records.append(ExternalRecord(
-                source_system=self.system_name,
-                external_id=item["id"],
-                record_type=item["type"],
-                title=item["title"],
-                data=item["data"],
-                metadata=meta
-            ))
-        return records
+            records = []
+            for item in mock_dispatches[:limit]:
+                meta = ExternalMetadata(
+                    source_system=self.system_name,
+                    external_id=item["id"],
+                    created_at=now - timedelta(hours=8),
+                    updated_at=now - timedelta(hours=2),
+                    fetched_at=now,
+                    organization_id=item["org_id"],
+                    mine_id=item["mine_id"],
+                    block_id=item["block_id"],
+                    source_uri=f"{self.endpoint}/dispatches/{item['id']}",
+                    raw_properties={"weighbridge_calibration_date": "2026-01-15", "tamper_seal_ok": True},
+                    provenance={"adapter": "MockCoalNetAdapter", "environment": "simulated"}
+                )
+                records.append(ExternalRecord(
+                    source_system=self.system_name,
+                    external_id=item["id"],
+                    record_type=item["type"],
+                    title=item["title"],
+                    data=item["data"],
+                    metadata=meta
+                ))
+            metrics["record_count"] = len(records)
+            return records
 
     def fetch_documents(
         self,
@@ -277,55 +307,60 @@ class MockCoalNetAdapter(CoalNetAdapter):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 50
     ) -> List[ExternalDocument]:
-        now = datetime.utcnow()
-        doc_id = "COALNET_RAKE_CHALLAN_99412.pdf"
-        meta = ExternalMetadata(
-            source_system=self.system_name,
-            external_id=doc_id,
-            created_at=now - timedelta(hours=6),
-            updated_at=now - timedelta(hours=6),
-            fetched_at=now,
-            organization_id="SECL",
-            mine_id="KUSMUNDA_OC",
-            source_uri=f"{self.endpoint}/challans/{doc_id}",
-            provenance={"adapter": "MockCoalNetAdapter", "format": "PDF"}
-        )
-        sample_bytes = b"%PDF-1.4 Mock CoalNet Rake Weighment Summary Challan Slips"
-        return [ExternalDocument(
-            source_system=self.system_name,
-            external_id=doc_id,
-            document_type="weighment_challan",
-            title="CoalNet Electronic Rake Weighment Challan",
-            file_name=doc_id,
-            mime_type="application/pdf",
-            content_bytes=sample_bytes,
-            metadata=meta
-        )]
+        with self._timed_call("fetch_documents", extra={"limit": limit}) as metrics:
+            now = datetime.utcnow()
+            doc_id = "COALNET_RAKE_CHALLAN_99412.pdf"
+            meta = ExternalMetadata(
+                source_system=self.system_name,
+                external_id=doc_id,
+                created_at=now - timedelta(hours=6),
+                updated_at=now - timedelta(hours=6),
+                fetched_at=now,
+                organization_id="SECL",
+                mine_id="KUSMUNDA_OC",
+                source_uri=f"{self.endpoint}/challans/{doc_id}",
+                provenance={"adapter": "MockCoalNetAdapter", "format": "PDF"}
+            )
+            sample_bytes = b"%PDF-1.4 Mock CoalNet Rake Weighment Summary Challan Slips"
+            res = [ExternalDocument(
+                source_system=self.system_name,
+                external_id=doc_id,
+                document_type="weighment_challan",
+                title="CoalNet Electronic Rake Weighment Challan",
+                file_name=doc_id,
+                mime_type="application/pdf",
+                content_bytes=sample_bytes,
+                metadata=meta
+            )]
+            metrics["document_count"] = len(res)
+            return res
 
     def get_metadata(self, external_id: str) -> Optional[ExternalMetadata]:
-        now = datetime.utcnow()
-        return ExternalMetadata(
-            source_system=self.system_name,
-            external_id=external_id,
-            created_at=now - timedelta(days=1),
-            updated_at=now,
-            fetched_at=now,
-            organization_id="SECL",
-            source_uri=f"{self.endpoint}/items/{external_id}",
-            provenance={"adapter": "MockCoalNetAdapter"}
-        )
+        with self._timed_call("get_metadata", extra={"external_id": external_id}) as metrics:
+            now = datetime.utcnow()
+            return ExternalMetadata(
+                source_system=self.system_name,
+                external_id=external_id,
+                created_at=now - timedelta(days=1),
+                updated_at=now,
+                fetched_at=now,
+                organization_id="SECL",
+                source_uri=f"{self.endpoint}/items/{external_id}",
+                provenance={"adapter": "MockCoalNetAdapter"}
+            )
 
     def fetch_incremental(
         self,
         since: datetime,
         limit: int = 50
     ) -> Dict[str, Any]:
-        records = self.fetch_records(limit=limit)
-        docs = self.fetch_documents(limit=limit)
-        return {
-            "source_system": self.system_name,
-            "since": since.isoformat(),
-            "records": [r.to_dict() for r in records],
-            "documents": [d.to_dict() for d in docs],
-            "cursor": datetime.utcnow().isoformat()
-        }
+        with self._timed_call("fetch_incremental", extra={"limit": limit}) as metrics:
+            records = self.fetch_records(limit=limit)
+            docs = self.fetch_documents(limit=limit)
+            return {
+                "source_system": self.system_name,
+                "since": since.isoformat(),
+                "records": [r.to_dict() for r in records],
+                "documents": [d.to_dict() for d in docs],
+                "cursor": datetime.utcnow().isoformat()
+            }

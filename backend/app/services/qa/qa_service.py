@@ -24,6 +24,7 @@ from app.services.qa.grounding_checker import (
     STANDARD_REFUSAL_TEXT,
 )
 from app.services.audit import log_audit_event
+from app.core.logging.timing import timed_operation
 
 logger = logging.getLogger(__name__)
 
@@ -321,40 +322,54 @@ class QAService:
         llm_status = "AVAILABLE"
         answer_text = ""
 
-        system_prompt = (
-            "You are an enterprise Geological & Mining Reporting Intelligence Officer for Coal India Limited (CIL) and CMPDI.\n"
-            "Answer the question strictly based on the provided Evidence Chunks, Verified Structured Facts, and Verified Calculations.\n"
-            "RULES:\n"
-            "1. Ground all statements strictly in the provided evidence. Use bracketed citation numbers e.g. [1], [2].\n"
-            "2. Never compute numbers yourself; use numbers directly from the evidence or [VERIFIED CALCULATIONS].\n"
-            "3. If a cross-document conflict is noted, state both numbers and note that review is required.\n"
-            "4. If the question cannot be answered from the evidence, respond EXACTLY with:\n"
-            f"\"{STANDARD_REFUSAL_TEXT}\"\n"
-            "5. STRICT CONSTRAINT: State ONLY verified factual quantities and findings directly reported. "
-            "DO NOT infer or speculate regarding coal demand, resource sufficiency, depletion rates, future growth, "
-            "or operational causes/consequences unless explicitly stated verbatim in the evidence.\n"
-            "6. Keep the response concise, factual, and audit-grade."
-        )
-
-        user_prompt = f"{compiled_context}\n\nUser Question: {query}\n\nAuthoritative Answer:"
-
-        try:
-            llm_res: LLMResponse = llm_provider.generate(
-                prompt=user_prompt,
-                system_prompt=system_prompt,
-                temperature=settings.LLM_TEMPERATURE,
-                max_tokens=256
+        with timed_operation(
+            logger,
+            "qa_generation",
+            extra={
+                "top_k": top_k,
+                "has_conflict": struct_res.conflict_warning is not None,
+                "facts_count": len(struct_res.facts),
+                "evidence_count": len(retrieved_results),
+            }
+        ) as metrics:
+            system_prompt = (
+                "You are an enterprise Geological & Mining Reporting Intelligence Officer for Coal India Limited (CIL) and CMPDI.\n"
+                "Answer the question strictly based on the provided Evidence Chunks, Verified Structured Facts, and Verified Calculations.\n"
+                "RULES:\n"
+                "1. Ground all statements strictly in the provided evidence. Use bracketed citation numbers e.g. [1], [2].\n"
+                "2. Never compute numbers yourself; use numbers directly from the evidence or [VERIFIED CALCULATIONS].\n"
+                "3. If a cross-document conflict is noted, state both numbers and note that review is required.\n"
+                "4. If the question cannot be answered from the evidence, respond EXACTLY with:\n"
+                f"\"{STANDARD_REFUSAL_TEXT}\"\n"
+                "5. STRICT CONSTRAINT: State ONLY verified factual quantities and findings directly reported. "
+                "DO NOT infer or speculate regarding coal demand, resource sufficiency, depletion rates, future growth, "
+                "or operational causes/consequences unless explicitly stated verbatim in the evidence.\n"
+                "6. Keep the response concise, factual, and audit-grade."
             )
-            answer_text = llm_res.content
-        except (LLMUnavailableError, Exception) as e:
-            logger.warning(f"Local LLM unavailable: {e}. Executing deterministic grounded synthesis.")
-            llm_status = "UNAVAILABLE"
-            answer_text = self._deterministic_grounded_synthesis(
-                query=query,
-                struct_res=struct_res,
-                calc_dicts=calc_dicts,
-                retrieved_results=retrieved_results
-            )
+
+            user_prompt = f"{compiled_context}\n\nUser Question: {query}\n\nAuthoritative Answer:"
+
+            try:
+                llm_res: LLMResponse = llm_provider.generate(
+                    prompt=user_prompt,
+                    system_prompt=system_prompt,
+                    temperature=settings.LLM_TEMPERATURE,
+                    max_tokens=256
+                )
+                answer_text = llm_res.content
+            except (LLMUnavailableError, Exception) as e:
+                logger.warning(f"Local LLM unavailable: {e}. Executing deterministic grounded synthesis.")
+                llm_status = "UNAVAILABLE"
+                answer_text = self._deterministic_grounded_synthesis(
+                    query=query,
+                    struct_res=struct_res,
+                    calc_dicts=calc_dicts,
+                    retrieved_results=retrieved_results
+                )
+
+            metrics["llm_status"] = llm_status
+            metrics["llm_provider"] = getattr(llm_provider, "model_name", "unknown")
+            metrics["answer_length"] = len(answer_text)
 
         t_llm_ms = (time.perf_counter() - t_llm_start) * 1000.0
 

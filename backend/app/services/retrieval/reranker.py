@@ -2,6 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Tuple, Optional
 from app.core.config import settings
+from app.core.logging.timing import timed_operation
 
 logger = logging.getLogger(__name__)
 
@@ -76,37 +77,54 @@ class LocalCrossEncoderReranker(Reranker):
         candidates: List[Dict[str, Any]],
         top_k: int = 10
     ) -> Tuple[List[Dict[str, Any]], str]:
-        if not candidates:
-            return [], "EMPTY"
+        with timed_operation(
+            logger,
+            "cross_encoder_rerank",
+            extra={
+                "candidate_count": len(candidates),
+                "top_k": top_k,
+                "model_name": self.model_name,
+                "enabled": self.enabled,
+            }
+        ) as metrics:
+            if not candidates:
+                metrics["status"] = "EMPTY"
+                return [], "EMPTY"
 
-        if not self.enabled:
-            # Reranker explicitly disabled: preserve fused ranking
-            for c in candidates:
-                c["reranker_score"] = None
-            return candidates[:top_k], "DISABLED"
+            if not self.enabled:
+                # Reranker explicitly disabled: preserve fused ranking
+                for c in candidates:
+                    c["reranker_score"] = None
+                metrics["status"] = "DISABLED"
+                return candidates[:top_k], "DISABLED"
 
-        self._load_model()
-        if self._model is None:
-            # Model unavailable: preserve fused ranking, do NOT fabricate scores
-            for c in candidates:
-                c["reranker_score"] = None
-            return candidates[:top_k], "RERANKER_UNAVAILABLE"
+            self._load_model()
+            if self._model is None:
+                # Model unavailable: preserve fused ranking, do NOT fabricate scores
+                for c in candidates:
+                    c["reranker_score"] = None
+                metrics["status"] = "RERANKER_UNAVAILABLE"
+                return candidates[:top_k], "RERANKER_UNAVAILABLE"
 
-        try:
-            pairs = [(query, c.get("content", "")) for c in candidates]
-            scores = self._model.predict(pairs)
+            try:
+                pairs = [(query, c.get("content", "")) for c in candidates]
+                scores = self._model.predict(pairs)
 
-            for c, score in zip(candidates, scores):
-                c["reranker_score"] = round(float(score), 4)
+                for c, score in zip(candidates, scores):
+                    c["reranker_score"] = round(float(score), 4)
 
-            # Re-sort candidates by reranker score descending
-            reranked = sorted(candidates, key=lambda x: x["reranker_score"] if x["reranker_score"] is not None else -999.0, reverse=True)
-            return reranked[:top_k], "ACTIVE"
-        except Exception as e:
-            logger.error(f"Error during cross-encoder reranking: {e}")
-            for c in candidates:
-                c["reranker_score"] = None
-            return candidates[:top_k], "RERANKER_UNAVAILABLE"
+                # Re-sort candidates by reranker score descending
+                reranked = sorted(candidates, key=lambda x: x["reranker_score"] if x["reranker_score"] is not None else -999.0, reverse=True)
+                metrics["status"] = "ACTIVE"
+                metrics["reranked_count"] = len(reranked[:top_k])
+                return reranked[:top_k], "ACTIVE"
+            except Exception as e:
+                logger.error(f"Error during cross-encoder reranking: {e}")
+                for c in candidates:
+                    c["reranker_score"] = None
+                metrics["status"] = "RERANKER_UNAVAILABLE"
+                metrics["error"] = str(e)
+                return candidates[:top_k], "RERANKER_UNAVAILABLE"
 
     def health(self) -> Dict[str, Any]:
         if not self.enabled:
