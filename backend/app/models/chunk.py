@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Integer, Text, ForeignKey, JSON, Index, UniqueConstraint
+from sqlalchemy import Column, String, Integer, Text, ForeignKey, JSON, Index, UniqueConstraint, Computed
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from app.models.base import UUIDMixin
@@ -6,6 +7,9 @@ from app.db.database import Base
 
 class Chunk(UUIDMixin, Base):
     __tablename__ = "chunks"
+    __table_args__ = (
+        Index("idx_chunks_tsv", "tsv_content", postgresql_using="gin"),
+    )
     
     document_id = Column(String(36), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
     chunk_index = Column(Integer, nullable=False)
@@ -13,6 +17,11 @@ class Chunk(UUIDMixin, Base):
     chunk_type = Column(String(20), default="TEXT")  # TEXT or TABLE
     content = Column(Text, nullable=False)
     section_heading = Column(Text, nullable=True)
+    tsv_content = Column(
+        TSVECTOR,
+        Computed("to_tsvector('english', coalesce(section_heading, '') || ' ' || content)"),
+        nullable=True
+    )
     metadata_json = Column(JSON, nullable=True)
 
     # Relationships

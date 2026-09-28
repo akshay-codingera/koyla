@@ -35,13 +35,28 @@ def run_migrations():
             print("Adding metadata_json column to chunks table...")
             conn.execute(text("ALTER TABLE chunks ADD COLUMN metadata_json JSON;"))
             conn.commit()
-        conn.execute(text("ALTER TABLE chunks ALTER COLUMN section_heading TYPE TEXT;"))
-        conn.execute(text("ALTER TABLE processing_jobs ALTER COLUMN error_message TYPE TEXT;"))
+        chunk_col_types = {c["name"]: str(c["type"]).upper() for c in inspector.get_columns("chunks")}
+        if chunk_col_types.get("section_heading") != "TEXT":
+            conn.execute(text("ALTER TABLE chunks ALTER COLUMN section_heading TYPE TEXT;"))
+        job_col_types = {c["name"]: str(c["type"]).upper() for c in inspector.get_columns("processing_jobs")}
+        if job_col_types.get("error_message") != "TEXT":
+            conn.execute(text("ALTER TABLE processing_jobs ALTER COLUMN error_message TYPE TEXT;"))
         job_cols = [c["name"] for c in inspector.get_columns("processing_jobs")]
         if "retry_count" not in job_cols:
             print("Adding retry_count column to processing_jobs...")
             conn.execute(text("ALTER TABLE processing_jobs ADD COLUMN retry_count INTEGER DEFAULT 0;"))
-        conn.commit()
+        if "tsv_content" not in chunk_cols:
+            print("Adding persistent tsv_content column and GIN index to chunks table...")
+            conn.execute(text("""
+                ALTER TABLE chunks 
+                ADD COLUMN tsv_content tsvector 
+                GENERATED ALWAYS AS (to_tsvector('english', coalesce(section_heading, '') || ' ' || content)) STORED;
+            """))
+            conn.commit()
+            chunk_cols.append("tsv_content")
+        if "tsv_content" in chunk_cols:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_chunks_tsv ON chunks USING gin(tsv_content);"))
+            conn.commit()
 
         # Table continuation migrations
         table_cols = [c["name"] for c in inspector.get_columns("tables")]

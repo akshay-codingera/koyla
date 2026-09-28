@@ -79,9 +79,13 @@ class KeywordSearchEngine:
         score_expr = None
         if is_postgres:
             try:
-                # Use PostgreSQL plainto_tsquery for robustness
-                ts_vector = func.to_tsvector('english', Chunk.content)
-                ts_query = func.plainto_tsquery('english', clean_q)
+                # Support exact phrase matching if quoted, else websearch_to_tsquery for natural domain syntax
+                if '"' in clean_q:
+                    ts_query = func.phraseto_tsquery('english', clean_q.replace('"', ''))
+                else:
+                    ts_query = func.websearch_to_tsquery('english', clean_q)
+
+                ts_vector = Chunk.tsv_content if hasattr(Chunk, "tsv_content") else func.to_tsvector('english', Chunk.content)
                 fts_match = ts_vector.bool_op('@@')(ts_query)
                 ts_rank = func.ts_rank_cd(ts_vector, ts_query)
 
