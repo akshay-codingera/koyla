@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.api.deps import get_current_active_user
@@ -30,6 +30,7 @@ def get_job_status(
         "job_type": job.job_type,
         "status": job.status,
         "progress_pct": job.progress_pct,
+        "retry_count": getattr(job, "retry_count", 0) or 0,
         "error_message": job.error_message,
         "started_at": job.started_at.isoformat() if job.started_at else None,
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,

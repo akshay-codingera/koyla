@@ -34,6 +34,7 @@ class ProcessingJob(UUIDMixin, Base):
     job_type = Column(String(50))
     status = Column(String(50), default="QUEUED")
     progress_pct = Column(Integer, default=0)
+    retry_count = Column(Integer, default=0, nullable=False)
     error_message = Column(Text, nullable=True)
     started_at = Column(DateTime)
     completed_at = Column(DateTime)

@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     # NOTE: This is a configurable prototype system policy rule, NOT an asserted or official CIL/CMPDI institutional standard.
     RECONCILIATION_VARIANCE_THRESHOLD: float = 0.01
 
+    # Phase 1: Persistent Job Processing (Celery & Redis)
+    REDIS_URL: str = "redis://localhost:6379/0"
+    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
+    CELERY_TASK_ALWAYS_EAGER: bool = False
+
     # Phase 5: Embedding & Vector Search Settings
     EMBEDDING_PROVIDER: str = "sentence_transformers"  # "sentence_transformers" (primary neural) or "deterministic" (fallback)
     NEURAL_MODEL_NAME: str = "BAAI/bge-small-en-v1.5"

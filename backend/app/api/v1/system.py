@@ -99,6 +99,34 @@ def health_check(db: Session = Depends(get_db)):
     except Exception:
         report_engine_status = "DOWN"
 
+    # 9. Redis Cache & Broker check
+    redis_status = "DOWN"
+    try:
+        import redis
+        r = redis.Redis.from_url(settings.REDIS_URL, socket_timeout=0.5)
+        if r.ping():
+            redis_status = "UP"
+        else:
+            redis_status = "DEGRADED"
+    except Exception:
+        redis_status = "OFFLINE"
+
+    # 10. Celery Persistent Worker check
+    worker_status = "DOWN"
+    worker_details = {"active_workers": 0}
+    try:
+        from app.core.celery_app import check_celery_health
+        w_health = check_celery_health()
+        if w_health.get("active_workers", 0) > 0:
+            worker_status = "UP"
+        elif w_health.get("broker_connected", False):
+            worker_status = "DEGRADED"  # broker up but no workers pinged
+        else:
+            worker_status = "OFFLINE"
+        worker_details = w_health
+    except Exception:
+        worker_status = "OFFLINE"
+
     # Overall Status Calculation
     critical_services = [db_status, vec_status]
     if all(s == "UP" for s in critical_services) and topic_engine_status == "UP" and report_engine_status == "UP":
@@ -122,6 +150,9 @@ def health_check(db: Session = Depends(get_db)):
             "llm_service": llm_status,
             "topic_engine": topic_engine_status,
             "temporal_analytics": temporal_status,
-            "report_engine": report_engine_status
-        }
+            "report_engine": report_engine_status,
+            "redis": redis_status,
+            "workers": worker_status,
+        },
+        "worker_details": worker_details
     }

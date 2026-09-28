@@ -16,6 +16,9 @@ from app.models.chunk import Chunk
 from app.services.storage import storage_service
 from app.services.ingestion import process_document
 from app.services.audit import log_audit_event
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -138,7 +141,12 @@ async def upload_document(
         db.refresh(doc)
         db.refresh(job)
     else:
-        background_tasks.add_task(process_document, doc.id, job.id)
+        try:
+            from app.tasks.ingestion_tasks import process_document_task
+            process_document_task.delay(doc.id, job.id)
+        except Exception as e:
+            logger.warning(f"Could not enqueue Celery task, falling back to background_tasks: {e}")
+            background_tasks.add_task(process_document, doc.id, job.id)
         
     return {
         "id": doc.id,

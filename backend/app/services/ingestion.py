@@ -21,7 +21,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def process_document(document_id: str, job_id: str):
+def process_document(document_id: str, job_id: str, raise_on_error: bool = False):
     """
     Worker task to process an ingested document.
     Executes parsing, table continuation detection, structure-preserving chunking,
@@ -374,5 +374,7 @@ def process_document(document_id: str, job_id: str):
                 sha256_hash=doc.sha256_hash,
                 details={"error": str(e), "traceback": err}
             )
+        if raise_on_error:
+            raise
     finally:
         db.close()

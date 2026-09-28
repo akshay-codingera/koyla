@@ -19,3 +19,5 @@ xlrd>=2.0.1
 pillow>=10.0.0
 pytesseract>=0.3.10
 sentence-transformers>=3.0.0
+celery[redis]>=5.4.0
+redis>=5.0.0

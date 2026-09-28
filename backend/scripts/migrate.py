@@ -37,6 +37,10 @@ def run_migrations():
             conn.commit()
         conn.execute(text("ALTER TABLE chunks ALTER COLUMN section_heading TYPE TEXT;"))
         conn.execute(text("ALTER TABLE processing_jobs ALTER COLUMN error_message TYPE TEXT;"))
+        job_cols = [c["name"] for c in inspector.get_columns("processing_jobs")]
+        if "retry_count" not in job_cols:
+            print("Adding retry_count column to processing_jobs...")
+            conn.execute(text("ALTER TABLE processing_jobs ADD COLUMN retry_count INTEGER DEFAULT 0;"))
         conn.commit()
 
         # Table continuation migrations
