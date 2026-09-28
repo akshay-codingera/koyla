@@ -146,6 +146,14 @@ def health_check(db: Session = Depends(get_db)):
         id_status = "ERROR"
         id_type = "unknown"
 
+    # 13. Enterprise Adapters Check (SAP, CoalNet, DMS)
+    try:
+        from app.services.adapters import get_system_manager
+        adapters_mgr = get_system_manager()
+        adapters_health = adapters_mgr.get_all_health()
+    except Exception as e:
+        adapters_health = {"error": str(e)}
+
     # Overall Status Calculation
     critical_services = [db_status, vec_status]
     if all(s == "UP" for s in critical_services) and topic_engine_status == "UP" and report_engine_status == "UP":
@@ -176,5 +184,21 @@ def health_check(db: Session = Depends(get_db)):
             "identity_provider": id_status,
         },
         "identity_provider_type": id_type,
+        "enterprise_adapters": adapters_health,
         "worker_details": worker_details
     }
+
+
+@router.get("/adapters")
+def list_enterprise_adapters():
+    """
+    Lists configured enterprise integration adapters, their operational postures,
+    and capability flags. Sanitizes all endpoints and hides credentials.
+    """
+    from app.services.adapters import get_system_manager
+    adapters_mgr = get_system_manager()
+    return {
+        "adapters": adapters_mgr.list_adapters(),
+        "health": adapters_mgr.get_all_health(),
+    }
+

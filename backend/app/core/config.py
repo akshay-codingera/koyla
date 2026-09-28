@@ -64,6 +64,35 @@ class Settings(BaseSettings):
     LDAP_GROUP_ROLE_MAPPING: Any = {}
     LDAP_DEFAULT_ORGANIZATION_ID: Optional[str] = None
 
+    # Phase 6: Enterprise System Integration Adapters (SAP, CoalNet, DMS)
+    # Default is disabled and unconfigured, maintaining air-gapped / local-first deployment.
+    # Never claim live connectivity unless actual tested enterprise connectors are configured.
+    EXTERNAL_SYSTEM_MOCK_ENABLED: bool = False
+    EXTERNAL_SYSTEM_DEFAULT_TIMEOUT: float = 5.0
+
+    # SAP ERP Adapter Settings
+    SAP_ENABLED: bool = False
+    SAP_ENDPOINT: Optional[str] = None
+    SAP_CLIENT_ID: Optional[str] = None
+    SAP_CLIENT_SECRET: Optional[str] = None
+    SAP_AUTH_MODE: str = "oauth2"  # "oauth2", "basic", "api_key"
+    SAP_TIMEOUT_SECONDS: float = 5.0
+    SAP_VERIFY_TLS: bool = True
+
+    # CoalNet Dispatch & Logistics Adapter Settings
+    COALNET_ENABLED: bool = False
+    COALNET_ENDPOINT: Optional[str] = None
+    COALNET_API_KEY: Optional[str] = None
+    COALNET_TIMEOUT_SECONDS: float = 5.0
+    COALNET_VERIFY_TLS: bool = True
+
+    # Enterprise Document Management System (DMS) Adapter Settings
+    DMS_ENABLED: bool = False
+    DMS_ENDPOINT: Optional[str] = None
+    DMS_AUTH_TOKEN: Optional[str] = None
+    DMS_TIMEOUT_SECONDS: float = 5.0
+    DMS_VERIFY_TLS: bool = True
+
     @property
     def parsed_cors_origins(self) -> List[str]:
         if isinstance(self.CORS_ORIGINS, str):
@@ -121,6 +150,20 @@ class Settings(BaseSettings):
                     "CRITICAL SECURITY CONFIGURATION ERROR: Wildcard CORS origin ('*') is prohibited in production "
                     "when credentials are enabled. Configure explicit trusted origins."
                 )
+
+            # Phase 6: Enterprise integration adapter security validation
+            for sys_name, enabled, endpoint, verify_tls in [
+                ("SAP", self.SAP_ENABLED, self.SAP_ENDPOINT, self.SAP_VERIFY_TLS),
+                ("CoalNet", self.COALNET_ENABLED, self.COALNET_ENDPOINT, self.COALNET_VERIFY_TLS),
+                ("DMS", self.DMS_ENABLED, self.DMS_ENDPOINT, self.DMS_VERIFY_TLS),
+            ]:
+                if enabled:
+                    if not endpoint:
+                        raise ValueError(f"CRITICAL SECURITY CONFIGURATION ERROR: {sys_name}_ENABLED is True but {sys_name}_ENDPOINT is not configured.")
+                    if not endpoint.lower().startswith("https://"):
+                        raise ValueError(f"CRITICAL SECURITY CONFIGURATION ERROR: {sys_name}_ENDPOINT must use HTTPS in production.")
+                    if not verify_tls:
+                        raise ValueError(f"CRITICAL SECURITY CONFIGURATION ERROR: {sys_name}_VERIFY_TLS cannot be disabled in production.")
         elif self.SECRET_KEY in self.INSECURE_SECRETS:
             logger.warning("Running with default/insecure SECRET_KEY in non-production mode.")
 
