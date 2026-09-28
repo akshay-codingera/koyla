@@ -460,6 +460,7 @@ def get_evidence_relationships(
     return results
 
 @router.post("/{item_id}/review")
+@router.post("/review/{item_id}")
 def review_evidence_item(
     item_id: str,
     req: EvidenceReviewRequest,
@@ -476,6 +477,8 @@ def review_evidence_item(
         field = db.query(ExtractedField).filter(ExtractedField.id == actual_id).first()
         if not field:
             raise HTTPException(status_code=404, detail="Extracted value not found")
+
+        original_val = field.raw_value or str(field.numeric_value)
 
         if req.action == "APPROVE":
             field.verification_status = "VERIFIED"
@@ -511,7 +514,12 @@ def review_evidence_item(
             organization_id=field.organization_id,
             object_type="extracted_field",
             object_id=field.id,
-            details={"action": req.action, "corrected_value": req.corrected_value, "notes": req.notes}
+            details={
+                "action": req.action,
+                "original_value": original_val,
+                "corrected_value": req.corrected_value if req.action == "CORRECT" else None,
+                "notes": req.notes
+            }
         )
 
         return {"status": "SUCCESS", "item_id": item_id, "verification_status": field.verification_status}
@@ -522,6 +530,7 @@ def review_evidence_item(
             raise HTTPException(status_code=404, detail="Visual asset not found")
 
         doc = db.query(Document).filter(Document.id == visual.document_id).first()
+        original_vis_type = visual.visual_type
 
         if req.action == "APPROVE":
             visual.verification_status = "VERIFIED"
@@ -550,7 +559,12 @@ def review_evidence_item(
             organization_id=doc.organization_id if doc else current_user.organization_id,
             object_type="visual_asset",
             object_id=visual.id,
-            details={"action": req.action, "notes": req.notes}
+            details={
+                "action": req.action,
+                "original_value": original_vis_type,
+                "corrected_value": req.corrected_value if req.action == "CORRECT" else None,
+                "notes": req.notes
+            }
         )
 
         return {"status": "SUCCESS", "item_id": item_id, "verification_status": visual.verification_status}

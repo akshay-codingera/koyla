@@ -190,7 +190,20 @@ class QAService:
                 for w in substantive_query_words
             )
 
-        if not has_evidence or not has_topical_overlap or (not struct_res.facts and top_score < settings.QA_REFUSAL_THRESHOLD):
+        # Check explicit year in query (e.g. 2015)
+        query_years = re.findall(r'\b(?:19|20)\d{2}\b', query)
+        has_temporal_match = True
+        if query_years:
+            has_temporal_match = any(y in evidence_corpus_text for y in query_years)
+            if not has_temporal_match:
+                # Also check facts reporting periods
+                for f in struct_res.facts:
+                    f_period = str(f.reporting_period or '') + ' ' + str(f.source_text or '')
+                    if any(y in f_period for y in query_years):
+                        has_temporal_match = True
+                        break
+
+        if not has_evidence or not has_topical_overlap or not has_temporal_match or (not struct_res.facts and top_score < settings.QA_REFUSAL_THRESHOLD):
             # Deterministic Refusal
             return self._persist_and_return_refusal(
                 db=db,

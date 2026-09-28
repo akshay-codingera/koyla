@@ -85,10 +85,10 @@ class TemporalTopicService:
             existing_trends = db.query(TopicTrend).filter(TopicTrend.analysis_id == analysis_id).all()
             if existing_trends:
                 logger.info(f"Returning {len(existing_trends)} cached TopicTrend records for analysis {analysis_id}")
-                return self._format_trends_response(analysis, existing_trends)
+                return self._format_trends_response(analysis, existing_trends, db=db)
 
         # 2. Extract corpus documents and chunks with period information
-        topics = db.query(Topic).filter(Topic.analysis_id == analysis_id).all()
+        topics = db.query(Topic).filter(Topic.analysis_id == analysis_id).order_by(Topic.topic_index).all()
         if not topics:
             return {
                 "analysis_id": analysis_id,
@@ -241,7 +241,7 @@ class TemporalTopicService:
 
         db.commit()
 
-        return self._format_trends_response(analysis, created_trends)
+        return self._format_trends_response(analysis, created_trends, db=db)
 
     def _resolve_fiscal_year(self, doc: Document) -> str:
         """Deterministically extracts or canonicalizes the fiscal year of a document."""
@@ -318,7 +318,7 @@ class TemporalTopicService:
         else:
             return "STABLE"
 
-    def _format_trends_response(self, analysis: TopicAnalysis, trends: List[TopicTrend]) -> Dict[str, Any]:
+    def _format_trends_response(self, analysis: TopicAnalysis, trends: List[TopicTrend], db: Optional[Session] = None) -> Dict[str, Any]:
         """Formats trend records into a structured JSON response with strict version integrity checking."""
         # Strict Version Integrity Guard
         for t in trends:
@@ -327,6 +327,13 @@ class TemporalTopicService:
                     f"Version Integrity Violation: TopicTrend record '{t.id}' has analysis_id '{t.analysis_id}' "
                     f"which does not match target analysis '{analysis.id}'"
                 )
+
+        topic_order = {}
+        if db:
+            topics_list = db.query(Topic).filter(Topic.analysis_id == analysis.id).order_by(Topic.topic_index).all()
+            topic_order = {t.id: t.topic_index for t in topics_list}
+        elif hasattr(analysis, "topics") and analysis.topics:
+            topic_order = {t.id: t.topic_index for t in analysis.topics}
 
         topic_trends_map: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         all_periods = sorted(list(set(t.period_value for t in trends)), key=parse_period_sort_key)
@@ -346,6 +353,9 @@ class TemporalTopicService:
                 "growth_rate_pct": t.growth_rate_pct,
                 "trend_status": t.trend_status,
             })
+
+        for t_id in topic_trends_map:
+            topic_trends_map[t_id].sort(key=lambda s: parse_period_sort_key(s["period_value"]))
 
         topic_label_map = {
             t.topic_id: (t.metadata_json or {}).get("topic_label")
@@ -375,6 +385,8 @@ class TemporalTopicService:
                 "persistence_status": persistence,
                 "series": t_series,
             })
+
+        formatted_topics.sort(key=lambda ft: (topic_order.get(ft["topic_id"], 999999), ft["topic_id"]))
 
         return {
             "analysis_id": analysis.id,

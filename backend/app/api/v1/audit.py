@@ -27,6 +27,8 @@ class AuditEventResponse(BaseModel):
     class Config:
         from_attributes = True
 
+@router.get("", response_model=List[AuditEventResponse])
+@router.get("/", response_model=List[AuditEventResponse])
 @router.get("/logs", response_model=List[AuditEventResponse])
 def get_audit_logs(
     action: Optional[str] = None,

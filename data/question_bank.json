@@ -1,0 +1,391 @@
+[
+  {
+    "question_id": "Q-CAT-A-01",
+    "category": "CATEGORY_A_DIRECT_LOOKUP",
+    "query": "What was the total raw coal production reported by Coal India Limited in FY 2023-24?",
+    "target_documents": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ],
+    "expected_answer_elements": [
+      "773.6 MT",
+      "10.0% growth"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-A-02",
+    "category": "CATEGORY_A_DIRECT_LOOKUP",
+    "query": "What was the total exploration drilling meterage completed by CMPDI in 2023?",
+    "target_documents": [
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ],
+    "expected_answer_elements": [
+      "13.82 Lakh meters"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-B-01",
+    "category": "CATEGORY_B_TABLE_REASONING",
+    "query": "What was the actual production of SECL compared to its target in FY 2023-24?",
+    "target_documents": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ],
+    "expected_answer_elements": [
+      "Target: 185.0 MT",
+      "Actual: 187.0 MT",
+      "+1.08%"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-B-02",
+    "category": "CATEGORY_B_TABLE_REASONING",
+    "query": "What were the raw coal production figures for Gevra OC in April and May 2023?",
+    "target_documents": [
+      "secl_gevra_production_fy24.xlsx"
+    ],
+    "expected_answer_elements": [
+      "April 2023: 82,450 MT",
+      "May 2023: 86,210 MT"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "secl_gevra_production_fy24.xlsx"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-C-01",
+    "category": "CATEGORY_C_CALCULATION",
+    "query": "What was the percentage increase in Gevra OC production from April 2023 to May 2023?",
+    "target_documents": [
+      "secl_gevra_production_fy24.xlsx"
+    ],
+    "expected_answer_elements": [
+      "+4.56%",
+      "82,450",
+      "86,210",
+      "increased by +3,760"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "secl_gevra_production_fy24.xlsx"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-D-01",
+    "category": "CATEGORY_D_VISUAL_QUESTION",
+    "query": "What type of geological diagram is Figure 1 in the CIL operational report?",
+    "target_documents": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ],
+    "expected_answer_elements": [
+      "MAP",
+      "CMPDI Regional Exploration Grid",
+      "Barakar Coal Measures"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-E-01",
+    "category": "CATEGORY_E_VISUAL_OCR",
+    "query": "Which coal seam thicknesses and proved reserves are visible in the CMPDI stratigraphic section?",
+    "target_documents": [
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ],
+    "expected_answer_elements": [
+      "Coal Seam I (8.5 m)",
+      "Coal Seam II (14.2 m, 52.5 MT)"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-F-01",
+    "category": "CATEGORY_F_TEXT_AND_TABLE",
+    "query": "Does the narrative production claim for WCL Pench area agree with the reported table?",
+    "target_documents": [
+      "wcl_pench_operations_brief.docx"
+    ],
+    "expected_answer_elements": [
+      "66.8 MT",
+      "target of 65.0 MT",
+      "Seam I Grade G-8",
+      "Seam II Grade G-9"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "wcl_pench_operations_brief.docx"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-G-01",
+    "category": "CATEGORY_G_TEXT_AND_VISUAL",
+    "query": "What geological condition is described for Rajmahal OCP and where is it represented in the section diagram?",
+    "target_documents": [
+      "ecl_rajmahal_geological_section.png",
+      "cil_annual_report_2023_24_extract.pdf"
+    ],
+    "expected_answer_elements": [
+      "Barakar formation",
+      "Seam II",
+      "Seam III",
+      "Interburden Shale Parting"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "ecl_rajmahal_geological_section.png"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-H-01",
+    "category": "CATEGORY_H_TABLE_AND_VISUAL",
+    "query": "Compare the reported Upper Gevra Seam reserves with the CMPDI stratigraphic cross section.",
+    "target_documents": [
+      "secl_gevra_production_fy24.xlsx",
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ],
+    "expected_answer_elements": [
+      "124.5 MT",
+      "Seam II (52.5 MT)",
+      "Barakar Formation"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "secl_gevra_production_fy24.xlsx",
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-I-01",
+    "category": "CATEGORY_I_PRIMARY_FULL_MULTIMODAL_GOLDEN_DEMO",
+    "query": "Compare Gevra OC's production change between reporting periods and explain what geological evidence in the available records is relevant to the mine's condition.",
+    "target_documents": [
+      "secl_gevra_production_fy24.xlsx",
+      "cil_annual_report_2023_24_extract.pdf",
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ],
+    "expected_answer_elements": [
+      "production increased from 82,450 MT (April 2023) to 86,210 MT (May 2023) (+4.56%)",
+      "annual production reached 59.5 MT",
+      "geological evidence confirms thick seam development in Barakar Formation with composite thickness up to 35 meters",
+      "proved geological reserves of 335.3 MT"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_modalities": [
+      "TEXT",
+      "TABLE",
+      "VISUAL"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-J-01",
+    "category": "CATEGORY_J_ADVERSARIAL_REFUSAL",
+    "query": "What was Gevra OC's raw coal production in January 2015?",
+    "target_documents": [],
+    "expected_answer_elements": [
+      "Insufficient verified evidence found in the selected knowledge base."
+    ],
+    "expected_status": "REFUSED",
+    "notes": "Query asks about a historical period completely absent from the FY2023-24 corpus."
+  },
+  {
+    "question_id": "Q-CAT-J-02",
+    "category": "CATEGORY_J_ADVERSARIAL_REFUSAL",
+    "query": "What is the exact methane gas drainage volume at Moonidih colliery in cubic meters per hour?",
+    "target_documents": [],
+    "expected_answer_elements": [
+      "Insufficient verified evidence found in the selected knowledge base."
+    ],
+    "expected_status": "REFUSED",
+    "notes": "Query asks about an unrecorded gas drainage metric."
+  },
+  {
+    "question_id": "Q-CAT-K-01",
+    "category": "CATEGORY_K_CONFLICT_DETECTION",
+    "query": "What was the raw coal production of Gevra OC according to the conflicting Q1 audit reports?",
+    "target_documents": [
+      "conflict_source_alpha.pdf",
+      "conflict_source_beta.pdf"
+    ],
+    "expected_answer_elements": [
+      "Conflicting evidence detected",
+      "Source Alpha: 82,450 MT",
+      "Source Beta: 84,250 MT",
+      "Verification required"
+    ],
+    "expected_status": "CONFLICT_REQUIRES_REVIEW"
+  },
+  {
+    "question_id": "Q-CAT-A-03",
+    "category": "CATEGORY_A_DIRECT_LOOKUP",
+    "query": "What was the capital expenditure of Coal India Limited in FY 2023-24?",
+    "target_documents": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ],
+    "expected_answer_elements": [
+      "19,840 Crore INR"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-B-03",
+    "category": "CATEGORY_B_TABLE_REASONING",
+    "query": "What was the raw coal production and variance of CCL compared to its target in FY 2023-24?",
+    "target_documents": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ],
+    "expected_answer_elements": [
+      "Target: 84.0 MT",
+      "Actual: 86.0 MT",
+      "+2.38%"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-C-02",
+    "category": "CATEGORY_C_CALCULATION",
+    "query": "What was the total CIL production variance in MT between the target of 755.0 MT and actual 773.6 MT?",
+    "target_documents": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ],
+    "expected_answer_elements": [
+      "+18.6 MT",
+      "+2.46%"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "cil_annual_report_2023_24_extract.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-D-02",
+    "category": "CATEGORY_D_VISUAL_QUESTION",
+    "query": "What type of visual figure is the Rajmahal OCP exploration diagram?",
+    "target_documents": [
+      "ecl_rajmahal_geological_section.png"
+    ],
+    "expected_answer_elements": [
+      "GEOLOGICAL_SECTION",
+      "Rajmahal OCP",
+      "Seam II & III"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "ecl_rajmahal_geological_section.png"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-E-02",
+    "category": "CATEGORY_E_VISUAL_OCR",
+    "query": "What is the thickness and ash content of Coal Seam I shown in the CMPDI litholog?",
+    "target_documents": [
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ],
+    "expected_answer_elements": [
+      "8.5 m",
+      "24.5%"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-F-02",
+    "category": "CATEGORY_F_TEXT_AND_TABLE",
+    "query": "Does the North Karanpura geological reserve statement in the technical note state proved coal resources?",
+    "target_documents": [
+      "ccl_geological_technical_note.txt"
+    ],
+    "expected_answer_elements": [
+      "86.0 MT",
+      "Barakar Formation"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "ccl_geological_technical_note.txt"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-G-02",
+    "category": "CATEGORY_G_TEXT_AND_VISUAL",
+    "query": "What is the proved reserve of Coal Seam II shown in the Rajmahal geological cross section?",
+    "target_documents": [
+      "ecl_rajmahal_geological_section.png"
+    ],
+    "expected_answer_elements": [
+      "68.2 MT",
+      "Thickness: 16.8 m"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "ecl_rajmahal_geological_section.png"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-H-02",
+    "category": "CATEGORY_H_TABLE_AND_VISUAL",
+    "query": "Compare the proved reserves of Lower Gevra Seam from the spreadsheet with CMPDI geological section Seam II.",
+    "target_documents": [
+      "secl_gevra_production_fy24.xlsx",
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ],
+    "expected_answer_elements": [
+      "210.8 MT",
+      "52.5 MT"
+    ],
+    "expected_status": "SUPPORTED",
+    "required_citations": [
+      "secl_gevra_production_fy24.xlsx",
+      "cmpdi_exploration_bulletin_2023.pdf"
+    ]
+  },
+  {
+    "question_id": "Q-CAT-J-03",
+    "category": "CATEGORY_J_ADVERSARIAL_REFUSAL",
+    "query": "What was the lithium extraction rate at Korba Coalfield in FY 2023-24?",
+    "target_documents": [],
+    "expected_answer_elements": [
+      "Insufficient verified evidence found in the selected knowledge base."
+    ],
+    "expected_status": "REFUSED",
+    "notes": "Query asks about a non-coal mineral extraction metric not present in CIL coal records."
+  },
+  {
+    "question_id": "Q-CAT-K-02",
+    "category": "CATEGORY_K_CONFLICT_DETECTION",
+    "query": "Is there a conflict between Source Alpha and Source Beta on Gevra OC quarterly production?",
+    "target_documents": [
+      "conflict_source_alpha.pdf",
+      "conflict_source_beta.pdf"
+    ],
+    "expected_answer_elements": [
+      "82,450 MT",
+      "84,250 MT",
+      "conflict"
+    ],
+    "expected_status": "CONFLICT_REQUIRES_REVIEW",
+    "notes": "Conflict confirmation query."
+  }
+]

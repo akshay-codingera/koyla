@@ -189,6 +189,24 @@ class ArithmeticEngine:
         # Group records by (normalized entity_name, normalized metric_name)
         groups: Dict[tuple, List[Dict[str, Any]]] = {}
         for r in structured_records:
+            val = r.get("numeric_value")
+            if val is None and r.get("raw_value"):
+                try:
+                    num_clean = re.sub(r"[^\d\.\-]", "", str(r["raw_value"]))
+                    if num_clean:
+                        val = float(num_clean)
+                        r["numeric_value"] = val
+                except (ValueError, TypeError):
+                    pass
+            elif isinstance(val, str):
+                try:
+                    num_clean = re.sub(r"[^\d\.\-]", "", val)
+                    if num_clean:
+                        val = float(num_clean)
+                        r["numeric_value"] = val
+                except (ValueError, TypeError):
+                    pass
+
             if r.get("numeric_value") is not None:
                 ent_k = (r.get("entity_name") or "Entity").strip().lower()
                 met_k = (r.get("metric_name") or r.get("field_name") or "Metric").strip().lower().replace("_", " ")

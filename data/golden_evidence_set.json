@@ -1,0 +1,647 @@
+[
+  {
+    "golden_id": "GOLD-01",
+    "source_id": "VAL-DOC-01",
+    "document_name": "cil_annual_report_2023_24_extract.pdf",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Coal India Limited",
+    "metric_name": "raw_coal_production",
+    "expected_value": "773.6 MT",
+    "expected_normalized_value": "773.6",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Total CIL raw coal production reported in executive overview."
+  },
+  {
+    "golden_id": "GOLD-02",
+    "source_id": "VAL-DOC-01",
+    "document_name": "cil_annual_report_2023_24_extract.pdf",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Coal India Limited",
+    "metric_name": "coal_offtake",
+    "expected_value": "753.8 MT",
+    "expected_normalized_value": "753.8",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Total coal offtake achieved in FY 2023-24."
+  },
+  {
+    "golden_id": "GOLD-03",
+    "source_id": "VAL-DOC-01",
+    "document_name": "cil_annual_report_2023_24_extract.pdf",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Gevra Open Cast Project",
+    "metric_name": "annual_production",
+    "expected_value": "59.5 MT",
+    "expected_normalized_value": "59.5",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Gevra OC production reported on page 1."
+  },
+  {
+    "golden_id": "GOLD-04",
+    "source_id": "VAL-DOC-01",
+    "document_name": "cil_annual_report_2023_24_extract.pdf",
+    "expected_type": "TABLE",
+    "entity_name": "SECL",
+    "metric_name": "actual_production",
+    "expected_value": "187.0",
+    "expected_normalized_value": "187.0",
+    "expected_location": {
+      "page": 2,
+      "sheet": null,
+      "cell": null,
+      "row": 6,
+      "column": "Actual Production",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Subsidiary table row SECL actual production on page 2."
+  },
+  {
+    "golden_id": "GOLD-05",
+    "source_id": "VAL-DOC-01",
+    "document_name": "cil_annual_report_2023_24_extract.pdf",
+    "expected_type": "VISUAL",
+    "entity_name": "CMPDI Regional Exploration Grid",
+    "metric_name": "figure_classification",
+    "expected_value": "MAP",
+    "expected_normalized_value": "MAP",
+    "expected_location": {
+      "page": 2,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": [
+        50,
+        320,
+        545,
+        540
+      ]
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "Figure 1 regional exploration map with Barakar proven reserves."
+  },
+  {
+    "golden_id": "GOLD-06",
+    "source_id": "VAL-DOC-02",
+    "document_name": "cmpdi_exploration_bulletin_2023.pdf",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "CMPDI",
+    "metric_name": "exploration_drilling",
+    "expected_value": "13.82 Lakh meters",
+    "expected_normalized_value": "13.82",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Drilling meterage completed in 2023."
+  },
+  {
+    "golden_id": "GOLD-07",
+    "source_id": "VAL-DOC-02",
+    "document_name": "cmpdi_exploration_bulletin_2023.pdf",
+    "expected_type": "VISUAL",
+    "entity_name": "Stratigraphic Cross-Section of Barakar Formation",
+    "metric_name": "figure_classification",
+    "expected_value": "GEOLOGICAL_SECTION",
+    "expected_normalized_value": "GEOLOGICAL_SECTION",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": [
+        50,
+        280,
+        545,
+        520
+      ]
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "Figure 2 stratigraphic cross section with Coal Seam I & II."
+  },
+  {
+    "golden_id": "GOLD-08",
+    "source_id": "VAL-DOC-03",
+    "document_name": "secl_gevra_production_fy24.xlsx",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Gevra OC",
+    "metric_name": "raw_coal_production_april",
+    "expected_value": "82,450",
+    "expected_normalized_value": "82450.0",
+    "expected_location": {
+      "page": null,
+      "sheet": "Production_Summary",
+      "cell": "B2",
+      "row": 2,
+      "column": "Raw_Coal_Production_MT",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "April 2023 raw coal production in spreadsheet."
+  },
+  {
+    "golden_id": "GOLD-09",
+    "source_id": "VAL-DOC-03",
+    "document_name": "secl_gevra_production_fy24.xlsx",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Gevra OC",
+    "metric_name": "raw_coal_production_may",
+    "expected_value": "86,210",
+    "expected_normalized_value": "86210.0",
+    "expected_location": {
+      "page": null,
+      "sheet": "Production_Summary",
+      "cell": "B3",
+      "row": 3,
+      "column": "Raw_Coal_Production_MT",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "May 2023 raw coal production in spreadsheet."
+  },
+  {
+    "golden_id": "GOLD-10",
+    "source_id": "VAL-DOC-03",
+    "document_name": "secl_gevra_production_fy24.xlsx",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Upper Gevra Seam",
+    "metric_name": "proved_reserves",
+    "expected_value": "124.5 MT",
+    "expected_normalized_value": "124.5",
+    "expected_location": {
+      "page": null,
+      "sheet": "Seam_Reserves",
+      "cell": "B2",
+      "row": 2,
+      "column": "Proved_Reserves_MT",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Upper Gevra Seam proved reserves from Seam_Reserves sheet."
+  },
+  {
+    "golden_id": "GOLD-11",
+    "source_id": "VAL-DOC-04",
+    "document_name": "bccl_moonidih_strata_metrics.csv",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Moonidih Colliery",
+    "metric_name": "monthly_extraction_seam_xvi",
+    "expected_value": "82,450",
+    "expected_normalized_value": "82450.0",
+    "expected_location": {
+      "page": null,
+      "sheet": null,
+      "cell": null,
+      "row": 1,
+      "column": "Monthly_Extraction_MT",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "Moonidih Seam XVI extraction value from CSV Row 1."
+  },
+  {
+    "golden_id": "GOLD-12",
+    "source_id": "VAL-DOC-05",
+    "document_name": "ecl_rajmahal_geological_section.png",
+    "expected_type": "VISUAL",
+    "entity_name": "Rajmahal OCP",
+    "metric_name": "figure_classification",
+    "expected_value": "GEOLOGICAL_SECTION",
+    "expected_normalized_value": "GEOLOGICAL_SECTION",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "Direct image of geological cross section for Rajmahal OCP."
+  },
+  {
+    "golden_id": "GOLD-13",
+    "source_id": "VAL-DOC-06",
+    "document_name": "wcl_pench_operations_brief.docx",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Pench Area",
+    "metric_name": "raw_coal_production",
+    "expected_value": "66.8 MT",
+    "expected_normalized_value": "66.8",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "WCL Pench area raw coal production in docx narrative."
+  },
+  {
+    "golden_id": "GOLD-14",
+    "source_id": "VAL-DOC-07",
+    "document_name": "ccl_geological_technical_note.txt",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "North Karanpura",
+    "metric_name": "geological_coal_reserves",
+    "expected_value": "86.0 MT",
+    "expected_normalized_value": "86.0",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Gross geological coal reserves for North Karanpura basin."
+  },
+  {
+    "golden_id": "GOLD-15",
+    "source_id": "VAL-DOC-08",
+    "document_name": "conflict_source_alpha.pdf",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Gevra OC",
+    "metric_name": "raw_coal_production",
+    "expected_value": "82,450 MT",
+    "expected_normalized_value": "82450.0",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "Source Alpha reported production figure for conflict testing."
+  },
+  {
+    "golden_id": "GOLD-16",
+    "source_id": "VAL-DOC-09",
+    "document_name": "conflict_source_beta.pdf",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Gevra OC",
+    "metric_name": "raw_coal_production",
+    "expected_value": "84,250 MT",
+    "expected_normalized_value": "84250.0",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "Source Beta reported production figure (contradicting Source Alpha)."
+  },
+  {
+    "golden_id": "GOLD-17",
+    "source_id": "VAL-DOC-01",
+    "document_name": "cil_annual_report_2023_24_extract.pdf",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Coal India Limited",
+    "metric_name": "capital_expenditure",
+    "expected_value": "19,840 Crore INR",
+    "expected_normalized_value": "19840.0",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 1.0,
+    "notes": "CIL capex on page 1."
+  },
+  {
+    "golden_id": "GOLD-18",
+    "source_id": "VAL-DOC-01",
+    "document_name": "cil_annual_report_2023_24_extract.pdf",
+    "expected_type": "TABLE",
+    "entity_name": "BCCL",
+    "metric_name": "actual_production",
+    "expected_value": "41.2",
+    "expected_normalized_value": "41.2",
+    "expected_location": {
+      "page": 2,
+      "sheet": null,
+      "cell": null,
+      "row": 2,
+      "column": "Actual Production",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Subsidiary table BCCL actual production."
+  },
+  {
+    "golden_id": "GOLD-19",
+    "source_id": "VAL-DOC-01",
+    "document_name": "cil_annual_report_2023_24_extract.pdf",
+    "expected_type": "TABLE",
+    "entity_name": "CCL",
+    "metric_name": "actual_production",
+    "expected_value": "86.0",
+    "expected_normalized_value": "86.0",
+    "expected_location": {
+      "page": 2,
+      "sheet": null,
+      "cell": null,
+      "row": 3,
+      "column": "Actual Production",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Subsidiary table CCL actual production."
+  },
+  {
+    "golden_id": "GOLD-20",
+    "source_id": "VAL-DOC-01",
+    "document_name": "cil_annual_report_2023_24_extract.pdf",
+    "expected_type": "TABLE",
+    "entity_name": "MCL",
+    "metric_name": "actual_production",
+    "expected_value": "206.0",
+    "expected_normalized_value": "206.0",
+    "expected_location": {
+      "page": 2,
+      "sheet": null,
+      "cell": null,
+      "row": 7,
+      "column": "Actual Production",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Subsidiary table MCL actual production."
+  },
+  {
+    "golden_id": "GOLD-21",
+    "source_id": "VAL-DOC-02",
+    "document_name": "cmpdi_exploration_bulletin_2023.pdf",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Gevra Block",
+    "metric_name": "proved_geological_reserves",
+    "expected_value": "335.3 MT",
+    "expected_normalized_value": "335.3",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "CMPDI proved geological reserves in Gevra block."
+  },
+  {
+    "golden_id": "GOLD-22",
+    "source_id": "VAL-DOC-02",
+    "document_name": "cmpdi_exploration_bulletin_2023.pdf",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Raniganj Formation",
+    "metric_name": "proved_reserves",
+    "expected_value": "24.8 MT",
+    "expected_normalized_value": "24.8",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Proved reserves of Raniganj formation in eastern sector."
+  },
+  {
+    "golden_id": "GOLD-23",
+    "source_id": "VAL-DOC-02",
+    "document_name": "cmpdi_exploration_bulletin_2023.pdf",
+    "expected_type": "VISUAL",
+    "entity_name": "Coal Seam II",
+    "metric_name": "proved_reserves",
+    "expected_value": "52.5 MT",
+    "expected_normalized_value": "52.5",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": [
+        80,
+        420,
+        515,
+        460
+      ]
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Stratigraphic cross section Coal Seam II proved reserves."
+  },
+  {
+    "golden_id": "GOLD-24",
+    "source_id": "VAL-DOC-03",
+    "document_name": "secl_gevra_production_fy24.xlsx",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Gevra OC",
+    "metric_name": "raw_coal_production_june",
+    "expected_value": "84,100",
+    "expected_normalized_value": "84100.0",
+    "expected_location": {
+      "page": null,
+      "sheet": "Production_Summary",
+      "cell": "B4",
+      "row": 4,
+      "column": "Raw_Coal_Production_MT",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "June 2023 raw coal production from XLSX."
+  },
+  {
+    "golden_id": "GOLD-25",
+    "source_id": "VAL-DOC-03",
+    "document_name": "secl_gevra_production_fy24.xlsx",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Gevra OC",
+    "metric_name": "raw_coal_production_total_q1",
+    "expected_value": "252,760",
+    "expected_normalized_value": "252760.0",
+    "expected_location": {
+      "page": null,
+      "sheet": "Production_Summary",
+      "cell": "B5",
+      "row": 5,
+      "column": "Raw_Coal_Production_MT",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "Total Q1 production from XLSX."
+  },
+  {
+    "golden_id": "GOLD-26",
+    "source_id": "VAL-DOC-03",
+    "document_name": "secl_gevra_production_fy24.xlsx",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Lower Gevra Seam",
+    "metric_name": "proved_reserves",
+    "expected_value": "210.8 MT",
+    "expected_normalized_value": "210.8",
+    "expected_location": {
+      "page": null,
+      "sheet": "Seam_Reserves",
+      "cell": "B3",
+      "row": 3,
+      "column": "Proved_Reserves_MT",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Lower Gevra Seam proved reserves from XLSX."
+  },
+  {
+    "golden_id": "GOLD-27",
+    "source_id": "VAL-DOC-04",
+    "document_name": "bccl_moonidih_strata_metrics.csv",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Moonidih Colliery",
+    "metric_name": "monthly_extraction_seam_xvii",
+    "expected_value": "86,210",
+    "expected_normalized_value": "86210.0",
+    "expected_location": {
+      "page": null,
+      "sheet": null,
+      "cell": null,
+      "row": 2,
+      "column": "Monthly_Extraction_MT",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.0,
+    "notes": "Moonidih Seam XVII extraction from CSV Row 2."
+  },
+  {
+    "golden_id": "GOLD-28",
+    "source_id": "VAL-DOC-04",
+    "document_name": "bccl_moonidih_strata_metrics.csv",
+    "expected_type": "STRUCTURED_VALUE",
+    "entity_name": "Moonidih Colliery",
+    "metric_name": "ash_percentage_seam_xvi",
+    "expected_value": "18.5%",
+    "expected_normalized_value": "18.5",
+    "expected_location": {
+      "page": null,
+      "sheet": null,
+      "cell": null,
+      "row": 1,
+      "column": "Ash_Percentage",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.1,
+    "notes": "Ash percentage from CSV Row 1."
+  },
+  {
+    "golden_id": "GOLD-29",
+    "source_id": "VAL-DOC-05",
+    "document_name": "ecl_rajmahal_geological_section.png",
+    "expected_type": "VISUAL",
+    "entity_name": "Coal Seam II",
+    "metric_name": "proved_reserves",
+    "expected_value": "68.2 MT",
+    "expected_normalized_value": "68.2",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": null,
+      "column": null,
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.05,
+    "notes": "Coal Seam II proved reserves on Rajmahal geological section."
+  },
+  {
+    "golden_id": "GOLD-30",
+    "source_id": "VAL-DOC-06",
+    "document_name": "wcl_pench_operations_brief.docx",
+    "expected_type": "TABLE",
+    "entity_name": "Seam I",
+    "metric_name": "ash_content",
+    "expected_value": "24.5%",
+    "expected_normalized_value": "24.5",
+    "expected_location": {
+      "page": 1,
+      "sheet": null,
+      "cell": null,
+      "row": 1,
+      "column": "Ash Content (%)",
+      "bbox": null
+    },
+    "provenance_required": true,
+    "tolerance": 0.1,
+    "notes": "DOCX Table row 1 ash content."
+  }
+]

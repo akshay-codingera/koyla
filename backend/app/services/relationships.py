@@ -127,18 +127,41 @@ class RelationshipDiscoveryService:
                 created_relationships.append(rel)
 
             # Rule 4: Document Family (filename prefix or common naming pattern)
+            GENERIC_PREFIXES = {
+                "monthly", "annual", "mine", "mines", "geology", "geological",
+                "report", "reports", "test", "statement", "brief", "audit",
+                "probe", "data", "sheet", "table", "annexure", "review",
+                "quarterly", "production", "operations", "summary", "false",
+                "positive", "untitled", "document", "file"
+            }
             doc_stem = doc.original_filename.rsplit(".", 1)[0].lower().replace("_", " ").replace("-", " ")
             other_stem = other.original_filename.rsplit(".", 1)[0].lower().replace("_", " ").replace("-", " ")
-            doc_prefix = doc_stem.split()[0] if doc_stem.split() else ""
-            other_prefix = other_stem.split()[0] if other_stem.split() else ""
-            if doc_prefix and len(doc_prefix) >= 4 and doc_prefix == other_prefix:
+            doc_tokens = [w for w in doc_stem.split() if w]
+            other_tokens = [w for w in other_stem.split() if w]
+
+            doc_family_match = False
+            matched_family_prefix = ""
+
+            if doc_tokens and other_tokens:
+                # 1. First token match if not generic
+                if doc_tokens[0] == other_tokens[0] and len(doc_tokens[0]) >= 4 and doc_tokens[0] not in GENERIC_PREFIXES:
+                    doc_family_match = True
+                    matched_family_prefix = doc_tokens[0]
+                # 2. Or two-token consecutive prefix match (e.g. "gevra production")
+                elif len(doc_tokens) >= 2 and len(other_tokens) >= 2:
+                    if doc_tokens[0] == other_tokens[0] and doc_tokens[1] == other_tokens[1]:
+                        if doc_tokens[0] not in GENERIC_PREFIXES or doc_tokens[1] not in GENERIC_PREFIXES:
+                            doc_family_match = True
+                            matched_family_prefix = f"{doc_tokens[0]} {doc_tokens[1]}"
+
+            if doc_family_match:
                 rel = DocumentRelationship(
                     source_document_id=document_id,
                     target_document_id=other.id,
                     relationship_type="DOCUMENT_FAMILY",
                     confidence=0.85,
-                    matching_criteria={"prefix": doc_prefix},
-                    description=f"Document series match: prefix '{doc_prefix.title()}'"
+                    matching_criteria={"prefix": matched_family_prefix},
+                    description=f"Document series match: prefix '{matched_family_prefix.title()}'"
                 )
                 db.add(rel)
                 created_relationships.append(rel)
@@ -147,7 +170,7 @@ class RelationshipDiscoveryService:
             has_visual_1 = len(doc_visuals) > 0 or doc.mime_type.startswith("image/")
             has_visual_2 = len(other_visuals) > 0 or other.mime_type.startswith("image/")
             if (has_visual_1 and not has_visual_2) or (has_visual_2 and not has_visual_1):
-                if common_mines or common_periods or (doc_prefix and doc_prefix == other_prefix):
+                if common_mines or common_periods or doc_family_match:
                     rel = DocumentRelationship(
                         source_document_id=document_id,
                         target_document_id=other.id,
