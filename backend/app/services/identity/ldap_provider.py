@@ -60,7 +60,6 @@ class LDAPIdentityProvider(IdentityProvider):
         self.ca_cert_path = cfg.get("LDAP_CA_CERT_PATH") or settings.LDAP_CA_CERT_PATH
         self.timeout_seconds = cfg.get("LDAP_TIMEOUT_SECONDS", settings.LDAP_TIMEOUT_SECONDS)
         self.group_role_mapping = cfg.get("LDAP_GROUP_ROLE_MAPPING") or settings.parsed_ldap_group_role_mapping
-        self.default_role = cfg.get("LDAP_DEFAULT_ROLE", settings.LDAP_DEFAULT_ROLE)
         self.default_org_id = cfg.get("LDAP_DEFAULT_ORGANIZATION_ID") or settings.LDAP_DEFAULT_ORGANIZATION_ID
         self._driver = driver
 
@@ -91,7 +90,10 @@ class LDAPIdentityProvider(IdentityProvider):
     ) -> List[str]:
         """
         Maps directory groups (DNs or CNs) to Koyla application roles.
-        Prevents privilege escalation by only applying explicit mappings.
+        Enforces strict FAIL-CLOSED authorization:
+        Only explicitly configured LDAP group -> Koyla role mappings grant an application role.
+        If the authenticated user has no matching group mappings, returns [] (empty list).
+        Never falls back to any default role.
         """
         groups = raw_groups or user_identity.raw_attributes.get("memberOf", [])
         resolved_roles: List[str] = []
@@ -103,9 +105,6 @@ class LDAPIdentityProvider(IdentityProvider):
                 if pattern.lower() == grp_lower or f"cn={pattern.lower()}" in grp_lower:
                     if role_code not in resolved_roles:
                         resolved_roles.append(role_code)
-
-        if not resolved_roles and self.default_role:
-            resolved_roles.append(self.default_role)
 
         return resolved_roles
 
@@ -271,18 +270,25 @@ class LDAPIdentityProvider(IdentityProvider):
                 user.organization_id = org_id
             db.commit()
 
-        # Sync roles
+        # Fail-closed synchronization of roles in local shadow record
+        existing_user_roles = db.query(UserRole).filter(UserRole.user_id == user.id).all()
+        current_role_ids = {ur.role_id: ur for ur in existing_user_roles}
+
+        target_role_ids = set()
         if identity.roles:
             for r_code in identity.roles:
                 role = db.query(Role).filter(Role.code == r_code).first()
                 if role:
-                    exists = db.query(UserRole).filter(
-                        UserRole.user_id == user.id,
-                        UserRole.role_id == role.id
-                    ).first()
-                    if not exists:
+                    target_role_ids.add(role.id)
+                    if role.id not in current_role_ids:
                         db.add(UserRole(user_id=user.id, role_id=role.id))
-            db.commit()
+
+        # Revoke/prune unmapped privileges: delete any role assignments no longer granted by LDAP
+        for role_id, user_role_record in current_role_ids.items():
+            if role_id not in target_role_ids:
+                db.delete(user_role_record)
+
+        db.commit()
 
         identity.id = user.id
         identity.organization_id = user.organization_id

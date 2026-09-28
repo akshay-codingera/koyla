@@ -23,6 +23,19 @@ def login_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordR
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not identity.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    elif not identity.roles:
+        log_audit(
+            db,
+            actor_id=identity.id,
+            actor_name=identity.username,
+            role_code="NONE",
+            org_id=identity.organization_id,
+            action="AUTH_DENIED_NO_ROLE"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Your enterprise account has no assigned Koyla application role."
+        )
         
     access_token = create_access_token(subject=identity.username)
     role = identity.primary_role

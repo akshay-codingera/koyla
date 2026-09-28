@@ -140,7 +140,7 @@ def test_ldap_input_sanitization():
 
 
 def test_ldap_group_role_mapping():
-    """Verify LDAP/AD groups map deterministically to Koyla roles."""
+    """Verify LDAP/AD groups map deterministically to Koyla roles with fail-closed behavior."""
     group_map = {
         "CN=Koyla_HQ_Admins,OU=Groups,DC=example,DC=org": "SYSTEM_ADMIN",
         "CN=Koyla_Reviewers,OU=Groups,DC=example,DC=org": "CENTRAL_REVIEWER",
@@ -151,7 +151,6 @@ def test_ldap_group_role_mapping():
         "LDAP_SERVER_URL": "ldap://internal.ad:389",
         "LDAP_BASE_DN": "dc=example,dc=org",
         "LDAP_GROUP_ROLE_MAPPING": group_map,
-        "LDAP_DEFAULT_ROLE": "SUBSIDIARY_ANALYST"
     })
 
     identity = UserIdentity(
@@ -170,7 +169,7 @@ def test_ldap_group_role_mapping():
     assert "SYSTEM_ADMIN" in resolved
     assert "CENTRAL_REVIEWER" not in resolved
 
-    # Fallback to default role when no groups match
+    # Fail-closed: unmapped groups must NOT receive any role (empty list, no fallback)
     unmapped_identity = UserIdentity(
         id="test-id-2",
         username="unmapped_user",
@@ -180,7 +179,163 @@ def test_ldap_group_role_mapping():
         raw_attributes={"memberOf": ["CN=Other_Group,DC=example,DC=org"]}
     )
     unmapped_resolved = prov.resolve_roles(unmapped_identity)
-    assert unmapped_resolved == ["SUBSIDIARY_ANALYST"]
+    assert unmapped_resolved == []
+
+
+def test_ldap_group_role_mapping_multiple_groups():
+    """Verify LDAP user in multiple mapped groups receives all corresponding application roles."""
+    group_map = {
+        "CN=Koyla_HQ_Admins,OU=Groups,DC=example,DC=org": "SYSTEM_ADMIN",
+        "CN=Koyla_Reviewers,OU=Groups,DC=example,DC=org": "CENTRAL_REVIEWER",
+        "CN=Koyla_Analysts,OU=Groups,DC=example,DC=org": "SUBSIDIARY_ANALYST"
+    }
+
+    prov = LDAPIdentityProvider(config_override={
+        "LDAP_SERVER_URL": "ldap://internal.ad:389",
+        "LDAP_BASE_DN": "dc=example,dc=org",
+        "LDAP_GROUP_ROLE_MAPPING": group_map,
+    })
+
+    identity = UserIdentity(
+        id="multi-group-id",
+        username="multi_user",
+        full_name="Multi Role User",
+        roles=[],
+        auth_provider="ldap",
+        raw_attributes={"memberOf": [
+            "CN=Koyla_HQ_Admins,OU=Groups,DC=example,DC=org",
+            "CN=Koyla_Reviewers,OU=Groups,DC=example,DC=org"
+        ]}
+    )
+
+    resolved = prov.resolve_roles(identity)
+    assert len(resolved) == 2
+    assert "SYSTEM_ADMIN" in resolved
+    assert "CENTRAL_REVIEWER" in resolved
+    assert "SUBSIDIARY_ANALYST" not in resolved
+
+
+def test_ldap_group_role_mapping_empty_groups():
+    """Verify LDAP user with no group memberships receives empty role list (fail-closed)."""
+    prov = LDAPIdentityProvider(config_override={
+        "LDAP_SERVER_URL": "ldap://internal.ad:389",
+        "LDAP_BASE_DN": "dc=example,dc=org",
+        "LDAP_GROUP_ROLE_MAPPING": {"CN=Some_Group": "SYSTEM_ADMIN"},
+    })
+
+    identity = UserIdentity(
+        id="no-group-id",
+        username="no_group_user",
+        full_name="No Group User",
+        roles=[],
+        auth_provider="ldap",
+        raw_attributes={"memberOf": []}
+    )
+
+    resolved = prov.resolve_roles(identity)
+    assert resolved == []
+
+
+def test_ldap_fail_closed_shadow_user_pruning():
+    """Verify local shadow user synchronization strictly prunes unmapped/revoked roles."""
+    db = SessionLocal()
+    try:
+        from app.models.user import Role, UserRole
+
+        admin_role = db.query(Role).filter(Role.code == "SYSTEM_ADMIN").first()
+        analyst_role = db.query(Role).filter(Role.code == "SUBSIDIARY_ANALYST").first()
+        assert admin_role is not None
+        assert analyst_role is not None
+
+        prov = LDAPIdentityProvider(config_override={
+            "LDAP_SERVER_URL": "ldap://internal.ad:389",
+            "LDAP_BASE_DN": "dc=example,dc=org",
+            "LDAP_GROUP_ROLE_MAPPING": {
+                "CN=Admins": "SYSTEM_ADMIN",
+                "CN=Analysts": "SUBSIDIARY_ANALYST"
+            }
+        })
+
+        test_username = "ldap_pruning_test_user"
+
+        # 1. Sync user with SYSTEM_ADMIN role
+        id_1 = UserIdentity(
+            id="prune-test-uuid-1",
+            username=test_username,
+            full_name="Pruning Test User",
+            email="prune@test.org",
+            roles=["SYSTEM_ADMIN"],
+            is_active=True,
+            auth_provider="ldap"
+        )
+        prov._sync_local_user(db, id_1)
+
+        user = db.query(User).filter(User.username == test_username).first()
+        assert user is not None
+        user_roles = db.query(UserRole).filter(UserRole.user_id == user.id).all()
+        role_ids = [ur.role_id for ur in user_roles]
+        assert admin_role.id in role_ids
+        assert analyst_role.id not in role_ids
+
+        # 2. Re-sync user with changed group mapping: SUBSIDIARY_ANALYST only
+        id_2 = UserIdentity(
+            id=user.id,
+            username=test_username,
+            full_name="Pruning Test User",
+            email="prune@test.org",
+            roles=["SUBSIDIARY_ANALYST"],
+            is_active=True,
+            auth_provider="ldap"
+        )
+        prov._sync_local_user(db, id_2)
+
+        user_roles_2 = db.query(UserRole).filter(UserRole.user_id == user.id).all()
+        role_ids_2 = [ur.role_id for ur in user_roles_2]
+        assert admin_role.id not in role_ids_2  # Pruned!
+        assert analyst_role.id in role_ids_2      # Granted!
+
+        # 3. Re-sync user with NO mapped roles (fail-closed)
+        id_3 = UserIdentity(
+            id=user.id,
+            username=test_username,
+            full_name="Pruning Test User",
+            email="prune@test.org",
+            roles=[],  # Empty mapped roles
+            is_active=True,
+            auth_provider="ldap"
+        )
+        prov._sync_local_user(db, id_3)
+
+        user_roles_3 = db.query(UserRole).filter(UserRole.user_id == user.id).all()
+        assert len(user_roles_3) == 0  # All local roles pruned!
+
+        # Cleanup
+        db.delete(user)
+        db.commit()
+    finally:
+        db.close()
+
+
+def test_api_login_fail_closed_when_no_application_role():
+    """Verify /api/v1/auth/login returns 403 Forbidden when authenticated user has no mapped role."""
+    unmapped_identity = UserIdentity(
+        id="mock-unmapped-uuid",
+        username="ldap_unmapped_user",
+        full_name="Unmapped LDAP User",
+        email="unmapped@cmpdi.internal",
+        roles=[],  # No mapped application role
+        is_active=True,
+        auth_provider="ldap"
+    )
+
+    mock_provider = MagicMock()
+    mock_provider.authenticate.return_value = unmapped_identity
+
+    with patch("app.api.v1.auth.get_identity_provider", return_value=mock_provider):
+        res = client.post("/api/v1/auth/login", data={"username": "ldap_unmapped_user", "password": "ValidPassword123!"})
+        assert res.status_code == 403
+        data = res.json()
+        assert "no assigned Koyla application role" in data["detail"]
 
 
 def test_ldap_provider_authentication_mock():

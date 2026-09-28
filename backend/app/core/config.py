@@ -62,7 +62,6 @@ class Settings(BaseSettings):
     LDAP_CA_CERT_PATH: Optional[str] = None
     LDAP_TIMEOUT_SECONDS: float = 5.0
     LDAP_GROUP_ROLE_MAPPING: Any = {}
-    LDAP_DEFAULT_ROLE: str = "SUBSIDIARY_ANALYST"
     LDAP_DEFAULT_ORGANIZATION_ID: Optional[str] = None
 
     @property
