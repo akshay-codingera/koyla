@@ -4,7 +4,7 @@
 **Project**: Koyla (SIH Problem Statement 26023)  
 **Status**: Completed & Verified  
 **Date**: September 28, 2026  
-**Test Suite**: 204/204 Passed (100% Pass Rate, 0 Regressions)  
+**Test Suite**: 205/205 Passed (100% Pass Rate, 0 Regressions)  
 **Live End-to-End Execution**: Successful across all 13 heterogeneous files & 7 Playwright visual captures  
 
 ---
@@ -94,7 +94,7 @@ Cataloged in [`data/question_bank.json`](file:///c:/Users/aksha/.gemini/antigrav
 ### 5.1 Test Suite Execution
 ```text
 ============================= test session starts ==============================
-collected 204 items
+collected 205 items
 
 tests/test_api.py .                                                      [  0%]
 tests/test_document_intelligence.py ........                             [  4%]
@@ -103,7 +103,7 @@ tests/test_official_reports.py ........                                  [ 16%]
 tests/test_portability_deployment.py ...                                 [ 18%]
 tests/test_qa.py ................                                        [ 25%]
 tests/test_qa_adversarial.py .........                                   [ 30%]
-tests/test_real_data_validation.py .........                             [ 34%]
+tests/test_real_data_validation.py ..........                            [ 35%]
 tests/test_retrieval.py ...............                                  [ 42%]
 tests/test_table_intelligence.py .................                       [ 50%]
 tests/test_topic_engine.py .................                             [ 58%]
@@ -113,19 +113,20 @@ tests/test_topic_temporal.py ......................                      [ 86%]
 tests/test_universal_evidence.py ..........                             [ 91%]
 tests/test_visual_intelligence.py ...................                    [100%]
 
-======================== 204 passed, 42 warnings in 38.01s ====================
+======================== 205 passed, 42 warnings in 59.15s ====================
 ```
 
 ### 5.2 Phase 10.5 Focused Validation Suite (`tests/test_real_data_validation.py`)
 1. `test_corpus_manifest_integrity`: PASSED (Validates all 13 files, SHA-256 hashes, and strict classification labels).
 2. `test_golden_evidence_extraction`: PASSED (Validates ground-truth extraction against `golden_evidence_set.json`).
 3. `test_relationship_false_positive_prevention`: PASSED (Confirms stopword isolation on generic probe files).
-4. `test_numerical_arithmetic_precision`: PASSED (Validates comma-separated arithmetic: +3760.0 MT, +4.56%).
-5. `test_adversarial_qa_refusal_matrix`: PASSED (Confirms standard refusal on out-of-scope historical periods).
-6. `test_conflict_handling_no_silent_winner`: PASSED (Confirms both conflicting sources are retained and surfaced without silent picking).
-7. `test_provenance_audit_completeness`: PASSED (Validates physical provenance across all formats).
-8. `test_visual_review_audit_traceability`: PASSED (Validates audit logging of original and corrected values).
-9. `test_offline_fallback_deterministic_operation`: PASSED (Confirms air-gapped deterministic behavior).
+4. `test_numerical_arithmetic_precision`: PASSED (Validates comma-separated arithmetic: +3,760.0 MT, +4.56%).
+5. `test_numerical_calculation_audit_conflict_vs_yoy`: PASSED (MANDATORY AUDIT TEST: Verifies that 82,450 MT vs 84,250 MT evaluates to +2.18% / +1,800.0 MT under `CONFLICT_DISCREPANCY`, while YoY 46.7 MT vs 52.5 MT evaluates to +12.42% / +5.8 MT, each with explicit operand provenance).
+6. `test_adversarial_qa_refusal_matrix`: PASSED (Confirms standard refusal on out-of-scope historical periods).
+7. `test_conflict_handling_no_silent_winner`: PASSED (Confirms both conflicting sources are retained and surfaced without silent picking).
+8. `test_provenance_audit_completeness`: PASSED (Validates physical provenance across all formats).
+9. `test_visual_review_audit_traceability`: PASSED (Validates audit logging of original and corrected values).
+10. `test_offline_fallback_deterministic_operation`: PASSED (Confirms air-gapped deterministic behavior).
 
 ---
 
@@ -139,15 +140,32 @@ All 7 required visual artifacts were captured using automated headless Chromium 
 
 ### 6.2 Evidence Control Room (`10.5_02_evidence_control_room.png`)
 ![Evidence Control Room](/10.5_02_evidence_control_room.png)
-*Shows telemetry summary (1,700 documents, 3,223 values, 32 visuals, 586 preserved tables, 497 text pages, 1,505 cross-document relationships) and the Universal Evidence Register with exact cell coordinates (`Sheet: 'Production_Summary', Cell: 'B2'`).*
+*Shows telemetry summary (1,864 documents, 3,489 values, 48 visuals, 621 preserved tables, 547 text pages, 2,257 cross-document relationships) and the Universal Evidence Register with exact cell coordinates (`Sheet: 'Production_Summary', Cell: 'B2'`).*
 
 ### 6.3 Multimodal Question Input (`10.5_03_multimodal_question.png`)
 ![Multimodal Question Input](/10.5_03_multimodal_question.png)
-*Shows the Grounded AI Q&A Console with the Primary Golden Demo Query: "Compare Gevra OC's production change between reporting periods and explain what geological evidence in the available records is relevant to the mine's condition."*
+*Shows the Grounded AI Q&A Console with the Primary Golden Demo Query: "Compare Gevra OC's production change between reporting periods, report coal seam thickness, and describe what the geological cross section shows."*
 
-### 6.4 Grounded Answer & Conflict Flag (`10.5_04_grounded_answer.png`)
-![Grounded Answer & Conflict Flag](/10.5_04_grounded_answer.png)
-*Shows the grounded response with status `PARTIALLY SUPPORTED (65%)`, the flagged cross-document discrepancy table (`conflict_source_alpha.pdf` 82,450 MT vs `conflict_source_beta.pdf` 84,250 MT), deterministic arithmetic calculations (+12.42% increase), and numbered citations.*
+### 6.4 Grounded Answer, Conflict Flag & Calculation Audit (`10.5_04_grounded_answer.png`)
+![Grounded Answer, Conflict Flag & Calculation Audit](/10.5_04_grounded_answer.png)
+*Demonstrates mathematical and multimodal auditability:*
+1. **Conflict Discrepancy Calculation (+2.18%)**:
+   - `Operation`: `CONFLICT_DISCREPANCY`
+   - `Delta`: `+1,800.0 MT (+2.18%)`
+   - `Formula`: `((84,250 - 82,450) / 82,450) * 100 = +2.18%`
+   - `Baseline (Operand A)`: `82,450 MT` in `conflict_source_alpha.pdf` (Page 1)
+   - `Comparison (Operand B)`: `84,250 MT` in `conflict_source_beta.pdf` (Page 1)
+2. **Year-over-Year Production Comparison (+12.42%)**:
+   - `Operation`: `YOY_COMPARISON`
+   - `Delta`: `+5.8 MT (+12.42%)`
+   - `Formula`: `((52.5 - 46.7) / 46.7) * 100 = +12.42%`
+   - `Baseline (Operand A)`: `46.7 MT` in `Gevra OC Annual Operational Review 2023-24` (Page 2)
+   - `Comparison (Operand B)`: `52.5 MT` in `Gevra OC Annual Operational Review 2023-24` (Page 4)
+3. **Multimodal Evidence Provenance**:
+   - `TEXT Evidence`: `conflict_source_beta.pdf` (Page 1) / `cmpdi_exploration_bulletin_2023.pdf` (Page 1)
+   - `STRUCTURED Evidence`: `Gevra OC Annual Operational Review 2023-24` (Page 2 & 4) / `secl_gevra_production_fy24.xlsx` (Sheet: `Production_Summary`, Cell: `B2:B3`)
+   - `VISUAL Evidence`: `cmpdi_exploration_bulletin_2023.pdf` (Figure 2: `CROSS_SECTION`, bbox: `{'x0': 50.0, 'y0': 280.0, 'x1': 545.0, 'y1': 520.0}`)
+   - `Status & Confidence`: `PARTIALLY_SUPPORTED` / calibrated confidence (~52-65%) due to the active cross-document conflict, completely preventing false certainty in official reporting.
 
 ### 6.5 Source Provenance Inspector (`10.5_05_source_provenance.png`)
 ![Source Provenance Inspector](/10.5_05_source_provenance.png)
@@ -155,7 +173,7 @@ All 7 required visual artifacts were captured using automated headless Chromium 
 
 ### 6.6 Human Verification & Conflict Queue (`10.5_06_conflict_review.png`)
 ![Human Verification & Conflict Queue](/10.5_06_conflict_review.png)
-*Displays the institutional governance queue with 118 pending reviews, 53 cross-document conflicts, and 2 validation errors with action buttons.*
+*Displays the institutional governance queue with pending reviews, cross-document conflicts, and validation errors with action buttons.*
 
 ### 6.7 Immutable Audit Trail (`10.5_07_verification_audit.png`)
 ![Immutable Audit Trail](/10.5_07_verification_audit.png)

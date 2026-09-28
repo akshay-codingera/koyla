@@ -90,10 +90,24 @@ class ReciprocalRankFusion:
         fused_list = list(fused_map.values())
         fused_list.sort(key=lambda x: x["rrf_score"], reverse=True)
 
-        for idx, item in enumerate(fused_list):
+        # Deduplicate identical document copies (e.g. repeated test fixture uploads)
+        deduped = []
+        seen_signatures = set()
+        for item in fused_list:
+            sig = (
+                item.get("document_title"),
+                item.get("page_number"),
+                item.get("chunk_type"),
+                (item.get("content") or "").strip()[:80]
+            )
+            if sig not in seen_signatures:
+                seen_signatures.add(sig)
+                deduped.append(item)
+
+        for idx, item in enumerate(deduped):
             item["rrf_score"] = round(item["rrf_score"], 6)
             item["fused_rank"] = idx + 1
 
-        return fused_list[:top_k]
+        return deduped[:top_k]
 
 reciprocal_rank_fusion = ReciprocalRankFusion()

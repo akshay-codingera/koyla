@@ -152,9 +152,11 @@ class QAService:
         # 4. Deterministic Arithmetic Calculations
         t_calc_start = time.perf_counter()
         fact_dicts = [f.dict() for f in struct_res.facts]
+        conflict_cands = struct_res.conflict_warning.candidates if struct_res.conflict_warning else None
         calculations = arithmetic_engine.detect_and_execute_calculations(
             query=query,
-            structured_records=fact_dicts
+            structured_records=fact_dicts,
+            conflict_candidates=conflict_cands
         )
         calc_dicts = [c.dict() for c in calculations]
         t_calc_ms = (time.perf_counter() - t_calc_start) * 1000.0
@@ -531,8 +533,9 @@ class QAService:
         retrieved_results: List[Dict[str, Any]]
     ) -> str:
         """
-        Deterministic, extractive answer synthesis used when the local LLM is offline.
-        Ensures the system never fabricates answers and clearly reports factual data.
+        Deterministic, multimodal answer synthesis used when the local LLM is offline.
+        Ensures the system never fabricates answers and clearly reports factual data
+        spanning Text, Tabular, and Visual evidence.
         """
         sections = []
 
@@ -546,8 +549,17 @@ class QAService:
         if calc_dicts:
             calc_lines = []
             for c in calc_dicts:
-                calc_lines.append(f"- **{c['natural_language_summary']}** [Formula: `{c['formula']}`]")
-            sections.append("**Verified Calculations (Computed Deterministically):**\n" + "\n".join(calc_lines))
+                op_a = c.get("operand_a") or {}
+                op_b = c.get("operand_b") or {}
+                prov_str = ""
+                if op_a and op_b:
+                    doc_a = op_a.get("document_title") or "Source A"
+                    loc_a = op_a.get("source_location") or (f"Page {op_a.get('page_number')}" if op_a.get("page_number") else "N/A")
+                    doc_b = op_b.get("document_title") or "Source B"
+                    loc_b = op_b.get("source_location") or (f"Page {op_b.get('page_number')}" if op_b.get("page_number") else "N/A")
+                    prov_str = f" [Inputs: {doc_a} ({loc_a}) vs {doc_b} ({loc_b})]"
+                calc_lines.append(f"- **{c['natural_language_summary']}** [Formula: `{c['formula']}`]{prov_str}")
+            sections.append("**Deterministic Arithmetic Analysis (Verified Python Engine):**\n" + "\n".join(calc_lines))
 
         if struct_res.facts:
             fact_lines = []
@@ -555,22 +567,63 @@ class QAService:
                 p_str = f"Page {f.page_number}" if f.page_number else "N/A"
                 fact_lines.append(
                     f"- **{f.entity_name or 'Entity'}** - {f.metric_name}: `{f.raw_value}` "
-                    f"({f.reporting_period or 'FY N/A'}) [Source: *{f.document_title}*, {p_str}] [{idx}]"
+                    f"({f.reporting_period or 'FY N/A'}) [Source: *{f.document_title}*, {p_str}]"
                 )
             sections.append("**Verified Structured Metrics:**\n" + "\n".join(fact_lines))
 
-        if retrieved_results and not struct_res.facts and not calc_dicts:
-            snippets = []
-            for idx, r in enumerate(retrieved_results[:2], start=1):
-                t_str = f"Page {r.get('page_number', 1)}"
-                snippet = r.get("source_text", "").strip().replace("\n", " ")[:200]
-                snippets.append(f"[{idx}] *\"{snippet}...\"* (Source: *{r.get('title')}*, {t_str})")
-            sections.append("**Retrieved Source Evidence:**\n" + "\n".join(snippets))
+        # Categorize retrieved chunks into Multimodal Evidence (Text, Table/Spreadsheet, Visual)
+        if retrieved_results:
+            text_snippets = []
+            table_snippets = []
+            visual_snippets = []
+
+            for idx, r in enumerate(retrieved_results, start=1):
+                c_type = (r.get("chunk_type") or "TEXT").upper()
+                meta = r.get("metadata") or r.get("metadata_json") or {}
+                prov = r.get("provenance") or {}
+                d_title = r.get("title") or r.get("document_title") or "Document"
+                p_num = r.get("page_number", 1)
+                text = (r.get("source_text") or r.get("content") or "").strip().replace("\n", " ")
+
+                is_visual = c_type == "VISUAL" or bool(meta.get("visual_asset_id")) or bool(meta.get("visual_type")) or "cross_section" in text.lower() or "figure" in text.lower()
+                is_table = c_type == "TABLE" or bool(meta.get("sheet_name")) or bool(meta.get("range")) or bool(prov.get("table")) or "production_summary" in d_title.lower() or ".xlsx" in d_title.lower() or ".csv" in d_title.lower()
+
+                if is_visual:
+                    vis_type = meta.get("visual_type") or "GEOLOGICAL_DIAGRAM"
+                    fig_num = meta.get("figure_number") or "Figure"
+                    bbox = meta.get("bbox") or "N/A"
+                    visual_snippets.append(
+                        f"- **{fig_num} ({vis_type.replace('_', ' ')})**: *\"{text[:160]}...\"* "
+                        f"[Source: *{d_title}*, Page {p_num}, Bounding Box: `{bbox}`]"
+                    )
+                elif is_table:
+                    sheet = meta.get("sheet_name") or "Table"
+                    cell_rng = meta.get("range") or (f"Row {meta.get('csv_row', 'N/A')}" if meta.get("csv_row") else "Data Matrix")
+                    table_snippets.append(
+                        f"- **Tabular Record [{sheet}]**: *\"{text[:160]}...\"* "
+                        f"[Source: *{d_title}*, Location: `{sheet}!{cell_rng}`]"
+                    )
+                else:
+                    text_snippets.append(
+                        f"- **Geological / Operational Text**: *\"{text[:160]}...\"* "
+                        f"[Source: *{d_title}*, Page {p_num}]"
+                    )
+
+            multimodal_lines = []
+            if text_snippets:
+                multimodal_lines.append("**Textual Evidence:**\n" + "\n".join(text_snippets[:2]))
+            if table_snippets:
+                multimodal_lines.append("**Structured Table / Spreadsheet Evidence:**\n" + "\n".join(table_snippets[:2]))
+            if visual_snippets:
+                multimodal_lines.append("**Visual Intelligence Evidence:**\n" + "\n".join(visual_snippets[:2]))
+
+            if multimodal_lines:
+                sections.append("**Grounded Multimodal Evidence Summary:**\n" + "\n\n".join(multimodal_lines))
 
         ollama_url = getattr(settings, "OLLAMA_BASE_URL", "http://localhost:11434")
         sections.append(
             f"\n*(Notice: Local LLM service is offline or unreachable at {ollama_url}. "
-            "Evidence records and verified calculations above are compiled deterministically.)*"
+            "Evidence records, cross-document conflicts, and verified calculations above are compiled deterministically.)*"
         )
 
         return "\n\n".join(sections)

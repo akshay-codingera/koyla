@@ -24,12 +24,15 @@ pgsql/
 backend/koyla.db
 
 # Storage & Runtime Uploads
+storage/*
+!storage/.gitkeep
 storage/documents/*
 !storage/documents/.gitkeep
 backend/storage/*
 !backend/storage/.gitkeep
 backend/app/data/reports/*
 !backend/app/data/reports/.gitkeep
+scratch/
 
 # AI / ML Model Weights & Cache (Downloaded locally at runtime)
 backend/model_cache/

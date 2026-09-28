@@ -669,7 +669,7 @@ export const AIQuery: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {qaResult.calculations.map((calc, i) => (
-                    <div key={i} className="bg-white border border-blue-200 rounded-lg p-3 space-y-2 text-xs">
+                    <div key={i} className="bg-white border border-blue-200 rounded-lg p-3 space-y-2 text-xs shadow-sm">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-blue-900">{calc.operation.replace('_', ' ')}</span>
                         {calc.percentage_change !== null && calc.percentage_change !== undefined && (
@@ -681,9 +681,44 @@ export const AIQuery: React.FC = () => {
                         )}
                       </div>
                       <p className="text-gray-800 font-medium">{calc.natural_language_summary}</p>
-                      <div className="text-[11px] text-gray-500 font-mono bg-gray-50 p-1.5 rounded border border-gray-200">
-                        Formula: {calc.formula}
+                      <div className="text-[11px] text-gray-700 font-mono bg-blue-50/50 p-2 rounded border border-blue-200">
+                        <span className="font-semibold text-blue-900">Formula:</span> {calc.formula}
                       </div>
+
+                      {/* Explicit Inputs & Provenance Audit Table */}
+                      {(calc.operand_a && Object.keys(calc.operand_a).length > 0) && (
+                        <div className="mt-2 pt-2 border-t border-slate-100 text-[11px] space-y-1">
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Inputs & Source Provenance:</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-2 rounded border border-slate-200 font-mono">
+                            <div>
+                              <span className="text-slate-500 block text-[9px] uppercase font-sans">Baseline (Operand A):</span>
+                              <span className="font-bold text-slate-900">
+                                {calc.operand_a.value !== undefined ? Number(calc.operand_a.value).toLocaleString() : 'N/A'} {calc.operand_a.unit || ''}
+                              </span>
+                              <span className="text-slate-600 block text-[10px] truncate" title={calc.operand_a.document_title}>
+                                Doc: {calc.operand_a.document_title || 'N/A'}
+                              </span>
+                              <span className="text-slate-500 block text-[10px]">
+                                Loc: {calc.operand_a.source_location || (calc.operand_a.page_number ? `Page ${calc.operand_a.page_number}` : 'N/A')} {calc.operand_a.period ? `(${calc.operand_a.period})` : ''}
+                              </span>
+                            </div>
+                            {calc.operand_b && Object.keys(calc.operand_b).length > 0 && (
+                              <div>
+                                <span className="text-slate-500 block text-[9px] uppercase font-sans">Comparison (Operand B):</span>
+                                <span className="font-bold text-slate-900">
+                                  {calc.operand_b.value !== undefined ? Number(calc.operand_b.value).toLocaleString() : 'N/A'} {calc.operand_b.unit || ''}
+                                </span>
+                                <span className="text-slate-600 block text-[10px] truncate" title={calc.operand_b.document_title}>
+                                  Doc: {calc.operand_b.document_title || 'N/A'}
+                                </span>
+                                <span className="text-slate-500 block text-[10px]">
+                                  Loc: {calc.operand_b.source_location || (calc.operand_b.page_number ? `Page ${calc.operand_b.page_number}` : 'N/A')} {calc.operand_b.period ? `(${calc.operand_b.period})` : ''}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

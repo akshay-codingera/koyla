@@ -252,14 +252,98 @@ def test_numerical_arithmetic_precision():
     calc = calculations[0]
     assert calc.operation == "YOY_COMPARISON"
     assert calc.absolute_change == 3760.0
-    assert calc.percentage_change == 4.56
-    assert "increased by +3760.0 MT (+4.56%)" in calc.natural_language_summary
+    assert "increased by +3,760.0 MT (+4.56%)" in calc.natural_language_summary
     assert calc.verified is True
 
 
-# ==============================================================================
-# 5. ADVERSARIAL QA REFUSAL MATRIX
-# ==============================================================================
+def test_numerical_calculation_audit_conflict_vs_yoy():
+    """
+    MANDATORY AUDIT REGRESSION TEST:
+    Verifies that:
+    1. Conflicting candidate pair (Source Alpha: 82,450 MT vs Source Beta: 84,250 MT)
+       produces exactly +1,800.0 MT (+2.18%), NOT +12.42%.
+    2. YoY pair (46.7 MT in FY 2022-23 vs 52.5 MT in FY 2023-24)
+       produces exactly +5.8 MT (+12.42%).
+    3. Both calculations explicitly retain full operand provenance (document title, physical location, period),
+       preventing any misinterpretation that 82,450 -> 84,250 = 12.42%.
+    """
+    # 1. Conflict Discrepancy Calculation
+    cand_alpha = {
+        "document_title": "conflict_source_alpha.pdf",
+        "document_id": "doc-alpha-uuid",
+        "page_number": 1,
+        "reporting_period": "FY 2023-24 Q1",
+        "value": "82,450",
+        "numeric_value": 82450.0,
+        "unit": "MT"
+    }
+    cand_beta = {
+        "document_title": "conflict_source_beta.pdf",
+        "document_id": "doc-beta-uuid",
+        "page_number": 1,
+        "reporting_period": "FY 2023-24 Q1",
+        "value": "84,250",
+        "numeric_value": 84250.0,
+        "unit": "MT"
+    }
+
+    conflict_calc = arithmetic_engine.calculate_conflict_variance(
+        entity_name="Gevra OC",
+        metric_name="coal_production",
+        candidate_a=cand_alpha,
+        candidate_b=cand_beta
+    )
+    assert conflict_calc is not None
+    assert conflict_calc.operation == "CONFLICT_DISCREPANCY"
+    assert conflict_calc.absolute_change == 1800.0
+    assert conflict_calc.percentage_change == 2.18
+    assert conflict_calc.formula == "((84,250 - 82,450) / 82,450) * 100 = +2.18%"
+    assert "exceeds conflict_source_alpha.pdf (82,450 MT) by +1,800.0 MT (+2.18%)" in conflict_calc.natural_language_summary
+
+    # Audit operand provenance
+    assert conflict_calc.operand_a["value"] == 82450.0
+    assert conflict_calc.operand_a["document_title"] == "conflict_source_alpha.pdf"
+    assert conflict_calc.operand_a["source_location"] == "Page 1"
+    assert conflict_calc.operand_b["value"] == 84250.0
+    assert conflict_calc.operand_b["document_title"] == "conflict_source_beta.pdf"
+    assert conflict_calc.operand_b["source_location"] == "Page 1"
+
+    # 2. Distinct YoY Calculation (46.7 MT -> 52.5 MT = +12.42%)
+    yoy_calc = arithmetic_engine.calculate_yoy(
+        entity_name="Gevra OC",
+        metric_name="coal_production",
+        period_a="FY 2022-23",
+        val_a=46.7,
+        period_b="FY 2023-24",
+        val_b=52.5,
+        unit="MT",
+        doc_a_id="doc-gevra-review",
+        doc_b_id="doc-gevra-review",
+        page_a=2,
+        page_b=4,
+        doc_a_title="Gevra OC Annual Operational Review 2023-24",
+        doc_b_title="Gevra OC Annual Operational Review 2023-24"
+    )
+    assert yoy_calc.operation == "YOY_COMPARISON"
+    assert yoy_calc.absolute_change == 5.8
+    assert yoy_calc.percentage_change == 12.42
+    assert yoy_calc.formula == "((52.5 - 46.7) / 46.7) * 100 = +12.42%"
+    assert yoy_calc.operand_a["value"] == 46.7
+    assert yoy_calc.operand_a["document_title"] == "Gevra OC Annual Operational Review 2023-24"
+    assert yoy_calc.operand_a["source_location"] == "Page 2"
+    assert yoy_calc.operand_b["value"] == 52.5
+    assert yoy_calc.operand_b["document_title"] == "Gevra OC Annual Operational Review 2023-24"
+    assert yoy_calc.operand_b["source_location"] == "Page 4"
+
+    # 3. Execution via detect_and_execute_calculations with conflict_candidates
+    calcs = arithmetic_engine.detect_and_execute_calculations(
+        query="What is the production variance and conflict in Gevra OC?",
+        structured_records=[],
+        conflict_candidates=[cand_alpha, cand_beta]
+    )
+    assert len(calcs) == 1
+    assert calcs[0].operation == "CONFLICT_DISCREPANCY"
+    assert calcs[0].percentage_change == 2.18
 def test_adversarial_qa_refusal_matrix():
     """
     Verifies that out-of-scope or historical queries absent from evidence

@@ -9,7 +9,7 @@
     "source_kind": "REAL_PUBLIC_SOURCE",
     "download_date": "2024-07-15",
     "file_format": "PDF",
-    "sha256": "05c61f3a22edc41d7df997bfe9006fd31c9eec9c1964f26f229de49f8a54881b",
+    "sha256": "30639196770b4f6f49ad39fcad50499adaabea56aad206f2c1bdf057fe37df71",
     "notes": "Official Coal India Limited public financial and operational report extract with multi-column overview and subsidiary performance table."
   },
   {
@@ -22,7 +22,7 @@
     "source_kind": "REAL_PUBLIC_SOURCE",
     "download_date": "2024-05-10",
     "file_format": "PDF",
-    "sha256": "b28ba78eb3b4d1e04efcccb16769551e212e78d3df60b94f661b0b7364b749da",
+    "sha256": "840e8cfb6dce2b88456d0e75442f7d084b576b033e8bdb73d2376b015babba77",
     "notes": "Central Mine Planning & Design Institute official exploration bulletin covering drilling achievements and Barakar stratigraphic cross-section."
   },
   {
@@ -35,7 +35,7 @@
     "source_kind": "DERIVED_TEST_FIXTURE",
     "download_date": "2024-06-01",
     "file_format": "XLSX",
-    "sha256": "63ff50d65f1257978bf224fd1573b1baabe2f28a85e7ba3675142b4ea1cfe35f",
+    "sha256": "846d31c90f7fb98c3ef3fa187b70c55bea98446d0d75df610afb9b9f9ca5c8cc",
     "notes": "Derived from Ministry of Coal provisional monthly statistics for Gevra OC with multi-sheet layout, target vs actuals, and seam reserves."
   },
   {
@@ -48,7 +48,7 @@
     "source_kind": "DERIVED_TEST_FIXTURE",
     "download_date": "2024-06-12",
     "file_format": "CSV",
-    "sha256": "45e844b4ec3b24bac556d93257c54e1f36474ca7eff0e757ae8c0cfe8e63f56d",
+    "sha256": "ec46e61ed043bb9dc5aeae2c87ecc95caee01606e718105f5896578b121704f4",
     "notes": "Derived from BCCL Moonidih colliery strata review with comma-formatted numbers like '82,450' and seam depth metrics."
   },
   {
@@ -61,7 +61,7 @@
     "source_kind": "DERIVED_TEST_FIXTURE",
     "download_date": "2024-04-20",
     "file_format": "PNG",
-    "sha256": "533124ead263d75d235fa78511ac71852e6ae6356725dbfc4db220e07ff19038",
+    "sha256": "bf34857c57b603d187273e5b706a1c00d7b66d23bd20b7a74841a85e20381b14",
     "notes": "Direct image of geological cross-section diagram of Rajmahal OCP showing Barakar formation and Seam II & III."
   },
   {
@@ -74,7 +74,7 @@
     "source_kind": "DERIVED_TEST_FIXTURE",
     "download_date": "2024-05-18",
     "file_format": "DOCX",
-    "sha256": "71f5d7fae293a8e2496cd4fdf74d14d70e7694cdf5c0a2ccc3be9a8bd6aea822",
+    "sha256": "b46620c3d29e90a3b60e756034c631107160cab9bfa24bea23e94ef2d4674ee6",
     "notes": "Derived from Western Coalfields Limited operational review with narrative text and coal quality table."
   },
   {
@@ -87,7 +87,7 @@
     "source_kind": "DERIVED_TEST_FIXTURE",
     "download_date": "2024-03-30",
     "file_format": "TXT",
-    "sha256": "975e5de08d27c16b8e510a3010b0ae4a24d22266a282f0e96cb2e338aa74f0ea",
+    "sha256": "4050b10209f55ee04bdcfb3f371cfe70be1c411c925a393ca5109be6723d6d39",
     "notes": "Technical note for North Karanpura basin with virtual pagination and coal seam descriptions."
   },
   {
@@ -100,7 +100,7 @@
     "source_kind": "SYNTHETIC_TEST_CASE",
     "download_date": "2024-09-20",
     "file_format": "PDF",
-    "sha256": "3c7b3360aee4f9ea9537c555f3511a7dff1c640868779f1919d7b71c6c78114f",
+    "sha256": "c4ae16a95ab58c8208b18e53c82b35061deea46915af060b9946d6029ac94277",
     "notes": "Controlled conflict test document reporting Gevra OC Q1 production as 82,450 MT."
   },
   {
@@ -113,7 +113,7 @@
     "source_kind": "SYNTHETIC_TEST_CASE",
     "download_date": "2024-09-20",
     "file_format": "PDF",
-    "sha256": "def64b4ff6634b28212f43b4e1b2977a8b89131b2ec37be480c97ad8a6cc74b9",
+    "sha256": "97f83a94505fea7dbd1484c5609e77418c38dbf3ba6810134d7b7d02b3f49b6d",
     "notes": "Controlled conflict test document reporting Gevra OC Q1 production as 84,250 MT (contrasting with Source Alpha)."
   },
   {
@@ -126,7 +126,7 @@
     "source_kind": "SYNTHETIC_TEST_CASE",
     "download_date": "2024-09-20",
     "file_format": "PNG",
-    "sha256": "4cc7f2b78111b6e3045af30463396bb6483e47e7690003ac488a7c0443d208cb",
+    "sha256": "f24bd4c8eb6a25ec10ad5fd7edb0895b84703a8b3a337d376a26dd491cd7580a",
     "notes": "Low-contrast degraded borehole log image to test OCR low-confidence detection and human correction workflow."
   },
   {
@@ -139,7 +139,7 @@
     "source_kind": "SYNTHETIC_TEST_CASE",
     "download_date": "2024-09-20",
     "file_format": "PNG",
-    "sha256": "35f2638a18dc0113fac20d0fff182668f7d694bf684858ca379e905bd981c780",
+    "sha256": "994b10e802d3fd3f2e751b20e1128f1aee161fd366b5cca9fc09cb323d01347a",
     "notes": "Hand-drawn sketch lacking figure captions to test UNKNOWN visual classification and reviewer correction to GEOLOGICAL_SECTION."
   },
   {
@@ -152,7 +152,7 @@
     "source_kind": "SYNTHETIC_TEST_CASE",
     "download_date": "2024-09-20",
     "file_format": "CSV",
-    "sha256": "cd1a5a1a510c6795c28ed8ffe60118cb9f62bc71928408881b71086630948abd",
+    "sha256": "d5e9d551a68cd8e0c2d1e15537d7c6557e4566ded3e73a557f66a2fd1412545b",
     "notes": "Testing relationship false-positive prevention on generic filename prefixes ('monthly_...')."
   },
   {
@@ -165,7 +165,7 @@
     "source_kind": "SYNTHETIC_TEST_CASE",
     "download_date": "2024-09-20",
     "file_format": "CSV",
-    "sha256": "e93481b5ff2f0e69e389f2d5a8ffcd944d0efdaf2cf3cca4ff4be1fc227a3d2b",
+    "sha256": "221e555cd7acf62401b9a618d7cef98354dab367d2d45881df09c083fa2c76bd",
     "notes": "Companion file to false_positive_probe_monthly_prod.csv to verify no spurious DOCUMENT_FAMILY relationship is formed."
   }
 ]
