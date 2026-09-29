@@ -187,11 +187,13 @@ class Settings(BaseSettings):
     # NOTE: This is a configurable prototype system policy rule, NOT an asserted or official CIL/CMPDI institutional standard.
     RECONCILIATION_VARIANCE_THRESHOLD: float = 0.01
 
-    # Phase 1: Persistent Job Processing (Celery & Redis)
+    # Phase 1 / Phase 11: Persistent Job Processing (Celery, Redis & Stuck Job Recovery)
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
     CELERY_TASK_ALWAYS_EAGER: bool = False
+    JOB_STALE_TIMEOUT_MINUTES: int = 30
+    JOB_JANITOR_INTERVAL_MINUTES: int = 5
 
     # Phase 5: Embedding & Vector Search Settings
     EMBEDDING_PROVIDER: str = "sentence_transformers"  # "sentence_transformers" (primary neural) or "deterministic" (fallback)

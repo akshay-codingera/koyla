@@ -173,9 +173,10 @@ def test_metadata_filters_strict_isolation():
         # Query restricted to org_a
         res_a = keyword_search_engine.search(
             db=db,
-            query="dispatch quantity exceeded",
+            query="Gevra dispatch quantity exceeded",
             allowed_org_ids=[org_a.id],
-            filters={"document_type": "PRODUCTION_REPORT", "source_tier": "TIER_A"}
+            filters={"document_type": "PRODUCTION_REPORT", "source_tier": "TIER_A"},
+            top_k=50,
         )
         chunk_ids_a = [r["chunk_id"] for r in res_a]
         assert chunk_a.id in chunk_ids_a

@@ -35,3 +35,26 @@ def get_job_status(
         "started_at": job.started_at.isoformat() if job.started_at else None,
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
+
+
+@router.post("/jobs/reap-stale")
+def trigger_stale_job_sweep(
+    timeout_minutes: int = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Administrative on-demand trigger for stuck job recovery / Celery janitor.
+    Authorized for HQ officers, ministry reviewers, and system admins.
+    """
+    user_roles = [r.code for r in current_user.roles]
+    is_authorized = any(r in ["MINISTRY_OFFICER", "CMPDI_HQ_OFFICER", "SYSTEM_ADMIN"] for r in user_roles)
+    if not is_authorized:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrative privileges required to run stuck job recovery"
+        )
+    
+    from app.services.job_janitor import reap_stale_jobs
+    result = reap_stale_jobs(db=db, stale_timeout_minutes=timeout_minutes, actor_id=current_user.id)
+    return result

@@ -20,6 +20,12 @@ celery_app.conf.update(
     task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    beat_schedule={
+        "reap-stale-jobs-periodic": {
+            "task": "app.tasks.reap_stale_jobs_task",
+            "schedule": float(settings.JOB_JANITOR_INTERVAL_MINUTES * 60),
+        },
+    },
 )
 
 # Autodiscover tasks
