@@ -17,13 +17,14 @@ from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
+from app.core.config import settings
 from app.models.report import Report
 from app.services.reports.narrative import OFFICIAL_UNAVAILABLE_NOTICE
 from app.core.logging.timing import timed_operation
 
 logger = logging.getLogger(__name__)
 
-REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "reports")
+REPORTS_DIR = os.path.abspath(getattr(settings, "REPORTS_DIR", "data/reports"))
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 

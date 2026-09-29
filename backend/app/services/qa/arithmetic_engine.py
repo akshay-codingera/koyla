@@ -228,6 +228,10 @@ class ArithmeticEngine:
             res_val = max(values)
             formula = f"max({values}) = {res_val}"
             summary = f"Maximum {metric_name or 'metric'} is {res_val} {unit or ''}".strip()
+        elif op == "COUNT":
+            res_val = float(len(values))
+            formula = f"count({len(values)} items) = {int(res_val)}"
+            summary = f"Total count of {metric_name or 'items'} is {int(res_val)}"
         else:
             raise ValueError(f"Unsupported aggregation operation: {op}")
 

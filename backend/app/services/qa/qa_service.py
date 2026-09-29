@@ -159,6 +159,45 @@ class QAService:
             structured_records=fact_dicts,
             conflict_candidates=conflict_cands
         )
+
+        # Check aggregation query outcome
+        if struct_res.is_aggregation_query:
+            if not struct_res.aggregation_result or struct_res.aggregation_result.record_count == 0:
+                refusal_msg = (
+                    struct_res.aggregation_result.natural_language_summary
+                    if struct_res.aggregation_result and struct_res.aggregation_result.natural_language_summary
+                    else "No verified structured records found for the requested metric and scope."
+                )
+                return self._persist_and_return_refusal(
+                    db=db,
+                    query=query,
+                    current_user=current_user,
+                    norm_query=norm_query,
+                    filters=filters,
+                    reason=refusal_msg,
+                    overall_start=overall_start,
+                    search_res=search_res
+                )
+            else:
+                agg = struct_res.aggregation_result
+                from app.services.qa.arithmetic_engine import CalculationResult
+                agg_calc = CalculationResult(
+                    operation=agg.operation,
+                    entity_name=agg.scope_description or "Enterprise Aggregation",
+                    metric_name=agg.metric_name,
+                    unit=agg.unit,
+                    operand_a={
+                        "values": [c.numeric_value for c in agg.contributing_records],
+                        "record_count": agg.record_count,
+                        "scope": agg.scope_description
+                    },
+                    calculated_value=agg.calculated_value,
+                    formula=agg.formula,
+                    natural_language_summary=agg.natural_language_summary,
+                    verified=agg.verified
+                )
+                calculations.insert(0, agg_calc)
+
         calc_dicts = [c.dict() for c in calculations]
         t_calc_ms = (time.perf_counter() - t_calc_start) * 1000.0
 
@@ -294,7 +333,42 @@ class QAService:
                 format_provenance=format_info
             ))
 
+        # Add citations for aggregation contributing records if not already cited
+        if struct_res.aggregation_result and struct_res.aggregation_result.record_count > 0:
+            agg = struct_res.aggregation_result
+            for cr in agg.contributing_records:
+                if not any(c.document_id == cr.document_id and c.page_number == cr.page_number for c in citations_list):
+                    c_idx = len(citations_list) + 1
+                    citations_list.append(QACitation(
+                        citation_id=f"cite-{c_idx}",
+                        citation_index=c_idx,
+                        document_id=cr.document_id,
+                        document_title=cr.document_title,
+                        document_type="STATUTORY_REPORT",
+                        source_tier="TIER_A" if cr.verification_status in ("VERIFIED", "CORRECTED") else "TIER_B",
+                        page_number=cr.page_number or 1,
+                        excerpt=f"Extracted Field [{cr.metric_name}]: {cr.raw_value} {cr.unit or ''} ({cr.entity_name or 'Mine'}). Verification: {cr.verification_status}.",
+                        relevance_score=1.0
+                    ))
+
         compiled_context = "=== EVIDENCE CHUNKS ===\n" + "\n".join(evidence_blocks)
+
+        if struct_res.aggregation_result and struct_res.aggregation_result.record_count > 0:
+            agg = struct_res.aggregation_result
+            compiled_context += (
+                f"\n=== VERIFIED MULTI-DOCUMENT AGGREGATION (Database SQL Engine) ===\n"
+                f"- Operation: {agg.operation}\n"
+                f"- Metric: {agg.metric_name}\n"
+                f"- Calculated Value: {agg.calculated_value} {agg.unit or ''}\n"
+                f"- Summary: {agg.natural_language_summary}\n"
+                f"- Formula: {agg.formula}\n"
+                f"- Scope: {agg.scope_description}\n"
+            )
+            if agg.conflict_warning:
+                compiled_context += f"- Advisory: {agg.conflict_warning}\n"
+            compiled_context += f"- Contributing Source Records ({agg.record_count} total):\n"
+            for cr in agg.contributing_records[:10]:
+                compiled_context += f"  * {cr.entity_name or cr.document_title}: {cr.numeric_value} {cr.unit or ''} [Source: {cr.document_title}, Page {cr.page_number}]\n"
 
         if struct_res.conflict_warning:
             compiled_context += (
@@ -521,6 +595,7 @@ class QAService:
             "structured_facts": [f.dict() for f in struct_res.facts],
             "calculations": calc_dicts,
             "conflict_warning": struct_res.conflict_warning.dict() if struct_res.conflict_warning else None,
+            "aggregation_result": struct_res.aggregation_result.dict() if struct_res.aggregation_result else None,
             "claim_audit": [c.dict() for c in grounding_rep.claims],
             "unsupported_claims": grounding_rep.unsupported_claims,
             "citation_binding_valid": grounding_rep.citation_binding_valid,
@@ -553,6 +628,20 @@ class QAService:
         spanning Text, Tabular, and Visual evidence.
         """
         sections = []
+
+        if struct_res.aggregation_result and struct_res.aggregation_result.record_count > 0:
+            agg = struct_res.aggregation_result
+            agg_lines = [
+                f"- **{agg.natural_language_summary}** [Formula: `{agg.formula}`]"
+            ]
+            if agg.conflict_warning:
+                agg_lines.append(f"- *Advisory:* {agg.conflict_warning}")
+            agg_lines.append(f"- **Contributing Sources ({agg.record_count} records):**")
+            for cr in agg.contributing_records:
+                p_str = f"Page {cr.page_number}" if cr.page_number else "N/A"
+                ent = cr.entity_name or "Mine"
+                agg_lines.append(f"  * {ent}: `{cr.numeric_value} {cr.unit or ''}` [Source: *{cr.document_title}*, {p_str}]")
+            sections.append("**Deterministic Multi-Document SQL Aggregation:**\n" + "\n".join(agg_lines))
 
         if struct_res.conflict_warning:
             sections.append(

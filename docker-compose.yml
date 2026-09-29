@@ -58,7 +58,7 @@ services:
     volumes:
       - ./storage:/app/storage
       - ./backend/model_cache:/app/model_cache:ro
-      - reports_data:/app/app/data/reports
+      - reports_data:/app/data/reports
       - hf_cache:/root/.cache/huggingface
     depends_on:
       postgres:
@@ -98,7 +98,7 @@ services:
     volumes:
       - ./storage:/app/storage
       - ./backend/model_cache:/app/model_cache:ro
-      - reports_data:/app/app/data/reports
+      - reports_data:/app/data/reports
       - hf_cache:/root/.cache/huggingface
     depends_on:
       postgres:
