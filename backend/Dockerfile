@@ -5,6 +5,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     tesseract-ocr \
+    tesseract-ocr-hin \
+    fonts-lohit-deva \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 

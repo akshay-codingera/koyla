@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     CLAMAV_PORT: int = 3310
     CLAMAV_TIMEOUT_SECONDS: float = 5.0
 
+    # Phase 11: Bilingual OCR Settings (Default: eng+hin)
+    OCR_LANGUAGES: str = "eng+hin"
+    OCR_FALLBACK_LANGUAGE: str = "eng"
+
     # Phase 5: Identity Provider & LDAP/AD Abstraction Settings
     IDENTITY_PROVIDER: str = "local"  # "local" (default) or "ldap"
     LDAP_SERVER_URL: Optional[str] = None
