@@ -113,6 +113,10 @@ class StructuredLookupService:
             if not re.search(r'\b(?:total|sum|combined|aggregate|overall|average|avg|mean)\b', q_lower):
                 return AggregationIntent(is_aggregation=False)
 
+        # Exclude borehole strata queries (handled specifically by borehole strata lookup)
+        if re.search(r'\b(?:borehole|bore\s*hole|bh[-_\s]*[a-z0-9]+)\b', q_lower):
+            return AggregationIntent(is_aggregation=False)
+
         operation = None
         if re.search(r'\b(?:average|avg|mean)\b', q_lower):
             operation = "AVG"
@@ -616,6 +620,91 @@ class StructuredLookupService:
                 row_id=ef.row_id,
                 source_text=ef.source_text
             ))
+
+        # 3. Check for Borehole Strata Facts (Phase 11 P1-1)
+        bh_raw_matches = re.findall(r'\b(BH[-_\s]*[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*)\b', query, re.IGNORECASE)
+        borehole_ids = []
+        for m in bh_raw_matches:
+            cleaned = m.strip().upper()
+            if cleaned not in borehole_ids:
+                borehole_ids.append(cleaned)
+
+        is_strata_query = bool(borehole_ids) or any(
+            k in query.lower()
+            for k in [
+                "strata", "stratum", "lithology", "lithological", "borehole",
+                "coal layer", "coal seam", "rock layer", "strata sequence"
+            ]
+        )
+
+        if is_strata_query:
+            try:
+                from app.models.geology import BoreholeStratum
+                strata_q = db.query(
+                    BoreholeStratum,
+                    Document.title.label("document_title")
+                ).join(Document, BoreholeStratum.document_id == Document.id)
+
+                if allowed_org_ids is not None:
+                    strata_q = strata_q.filter(BoreholeStratum.organization_id.in_(allowed_org_ids))
+
+                if borehole_ids:
+                    bh_clauses = [func.lower(BoreholeStratum.borehole_id) == bh.lower() for bh in borehole_ids]
+                    strata_q = strata_q.filter(or_(*bh_clauses))
+
+                matched_strata = strata_q.order_by(
+                    BoreholeStratum.borehole_id,
+                    BoreholeStratum.stratum_order
+                ).limit(50).all()
+
+                for stratum, doc_title in matched_strata:
+                    facts.append(StructuredFact(
+                        field_id=f"stratum_{stratum.id}",
+                        document_id=stratum.document_id,
+                        document_title=doc_title,
+                        page_number=stratum.page_number,
+                        entity_name=f"Borehole {stratum.borehole_id}",
+                        metric_name=f"stratum_{stratum.stratum_order}_{stratum.lithology_type.lower().replace(' ', '_')}",
+                        raw_value=f"{stratum.lithology_type} ({stratum.depth_from_m}m - {stratum.depth_to_m}m, thickness: {stratum.thickness_m}m{', Seam: ' + stratum.seam_name if stratum.seam_name else ''})",
+                        numeric_value=stratum.thickness_m,
+                        unit="m",
+                        reporting_period="Geological Exploration",
+                        confidence_score=stratum.confidence_score,
+                        verification_status="VERIFIED",
+                        table_id=stratum.table_id,
+                        row_id=stratum.row_id,
+                        source_text=stratum.source_text or f"Borehole {stratum.borehole_id} layer: {stratum.depth_from_m}m - {stratum.depth_to_m}m {stratum.lithology_type}"
+                    ))
+
+                # Check if total coal thickness or summary was requested
+                if borehole_ids and any(w in query.lower() for w in ["total coal", "coal thickness", "sum of coal", "total depth", "summary"]):
+                    for bh_id in borehole_ids:
+                        bh_items = [s for s, _ in matched_strata if s.borehole_id.lower() == bh_id.lower()]
+                        if bh_items:
+                            coal_items = [s for s in bh_items if s.lithology_type == "Coal"]
+                            total_coal_th = round(sum(s.thickness_m for s in coal_items), 3)
+                            max_depth = max(s.depth_to_m for s in bh_items)
+                            seams = sorted(list(set(s.seam_name for s in bh_items if s.seam_name)))
+                            seams_str = ", ".join(seams) if seams else "None identified"
+                            doc_title = next((dt for s, dt in matched_strata if s.borehole_id.lower() == bh_id.lower()), "Borehole Log")
+
+                            facts.append(StructuredFact(
+                                field_id=f"bh_summary_coal_{bh_id}",
+                                document_id=bh_items[0].document_id,
+                                document_title=doc_title,
+                                page_number=bh_items[0].page_number,
+                                entity_name=f"Borehole {bh_items[0].borehole_id}",
+                                metric_name="total_coal_thickness",
+                                raw_value=f"{total_coal_th} m across {len(coal_items)} coal strata (Seams: {seams_str})",
+                                numeric_value=total_coal_th,
+                                unit="m",
+                                reporting_period="Geological Exploration",
+                                confidence_score=1.0,
+                                verification_status="VERIFIED",
+                                source_text=f"Computed from verified strata sequence: Total coal thickness {total_coal_th}m (Seams: {seams_str}) up to depth {max_depth}m."
+                            ))
+            except Exception as bh_err:
+                logger.warning(f"Error querying borehole strata for QA: {bh_err}")
 
         # Check for Reconciliation Conflicts
         conflict_warning = None

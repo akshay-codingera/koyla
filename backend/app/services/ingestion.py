@@ -352,6 +352,15 @@ def _process_document_internal(
             relationships_count = len(relationships)
         except Exception as rel_err:
             logger.warning(f"Relationship discovery error for doc {doc.id}: {rel_err}")
+
+        # 5.6 Phase 11 P1-1: Normalized Lithological Strata Extraction & Sequence Normalization
+        strata_count = 0
+        try:
+            from app.services.geology.strata_service import strata_service
+            extracted_strata = strata_service.extract_and_persist_strata(db, doc.id, doc.organization_id)
+            strata_count = len(extracted_strata)
+        except Exception as strata_err:
+            logger.warning(f"Strata extraction error for doc {doc.id}: {strata_err}")
             
         # 6. Finalize Job & Document
         job.status = "COMPLETED"
@@ -376,7 +385,8 @@ def _process_document_internal(
                 "chunks": len(chunks),
                 "ocr_applied": parsed_doc.ocr_applied,
                 "fields_extracted": extraction_run.fields_extracted_count,
-                "relationships_discovered": relationships_count
+                "relationships_discovered": relationships_count,
+                "strata_extracted": strata_count
             }
         )
 

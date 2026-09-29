@@ -22,6 +22,7 @@ import app.models.report
 import app.models.topic
 import app.models.visual
 import app.models.evidence
+import app.models.geology
 
 # Initialize database schema
 Base.metadata.create_all(bind=engine)
@@ -49,6 +50,7 @@ from app.api.v1 import (
     visuals,
     evidence,
     backup,
+    geology,
 )
 
 app = FastAPI(title=settings.PROJECT_NAME)
@@ -155,6 +157,7 @@ app.include_router(reports.router, prefix=f"{settings.API_V1_STR}/reports", tags
 app.include_router(topics.router, prefix=f"{settings.API_V1_STR}/topics", tags=["topics"])
 app.include_router(visuals.router, prefix=f"{settings.API_V1_STR}/visuals", tags=["visuals"])
 app.include_router(evidence.router, prefix=f"{settings.API_V1_STR}/evidence", tags=["evidence"])
+app.include_router(geology.router, prefix=f"{settings.API_V1_STR}/geology", tags=["geology"])
 app.include_router(backup.router, prefix=f"{settings.API_V1_STR}/admin/backup", tags=["backup"])
 app.include_router(backup.router, prefix=f"{settings.API_V1_STR}/backup", tags=["backup"])
 

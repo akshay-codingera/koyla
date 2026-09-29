@@ -107,6 +107,11 @@ def run_migrations():
             conn.execute(text("ALTER TABLE verification_tasks ADD COLUMN evidence_context JSON;"))
             conn.commit()
 
+        # Geology borehole strata migrations
+        if "borehole_strata" in inspector.get_table_names():
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_borehole_strata_org_bh_order ON borehole_strata (organization_id, borehole_id, stratum_order);"))
+            conn.commit()
+
         # Purge stale deterministic or legacy embeddings when transitioning to neural model
         from app.services.embedding import get_embedding_provider
         from app.db.database import SessionLocal

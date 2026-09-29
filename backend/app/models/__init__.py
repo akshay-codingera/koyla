@@ -33,10 +33,12 @@ from app.models.topic import (
     TopicEvidence,
 )
 from app.models.evidence import DocumentRelationship
+from app.models.geology import BoreholeStratum
 
 __all__ = [
     "Base",
     "UUIDMixin",
+    "BoreholeStratum",
     "Organization",
     "OrganizationRelationship",
     "User",

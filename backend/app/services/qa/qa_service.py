@@ -351,6 +351,23 @@ class QAService:
                         relevance_score=1.0
                     ))
 
+        # Add citations for structured facts (including borehole strata) if not already cited
+        for f in struct_res.facts:
+            if not any(c.document_id == f.document_id and c.page_number == f.page_number for c in citations_list):
+                c_idx = len(citations_list) + 1
+                citations_list.append(QACitation(
+                    citation_id=f"cite-{c_idx}",
+                    citation_index=c_idx,
+                    document_id=f.document_id,
+                    document_title=f.document_title or "Borehole Strata Record",
+                    document_type="GEOLOGICAL_STRATA",
+                    source_tier="TIER_A",
+                    page_number=f.page_number or 1,
+                    excerpt=f"Record [{f.metric_name}]: {f.raw_value} ({f.entity_name or 'Geology'}). Provenance: {f.source_text or 'Structured Table'}",
+                    relevance_score=1.0,
+                    table_provenance={"table_id": f.table_id, "row_id": f.row_id} if f.table_id else None
+                ))
+
         compiled_context = "=== EVIDENCE CHUNKS ===\n" + "\n".join(evidence_blocks)
 
         if struct_res.aggregation_result and struct_res.aggregation_result.record_count > 0:
