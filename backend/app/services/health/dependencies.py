@@ -311,3 +311,66 @@ def check_enterprise_adapters() -> Dict[str, Any]:
         return adapters_mgr.get_all_health()
     except Exception as e:
         return {"error": str(e)}
+
+
+def check_backup_subsystem() -> Dict[str, Any]:
+    """
+    Evaluates accessibility, retention parameters, and latest archive state of the Koyla backup subsystem.
+    Exposes safe operational telemetry without leaking credentials or private data.
+    """
+    from pathlib import Path
+    start = time.perf_counter()
+    backup_dir = Path(settings.BACKUP_DIR)
+    accessible = False
+    writable = False
+    backup_count = 0
+    latest_backup = None
+
+    try:
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        accessible = backup_dir.is_dir()
+
+        test_file = backup_dir / ".probe_check"
+        try:
+            test_file.touch()
+            writable = True
+            test_file.unlink(missing_ok=True)
+        except Exception:
+            writable = False
+
+        from app.services.backup.backup import BackupService
+        svc = BackupService(backup_dir=backup_dir)
+        backups = svc.list_backups()
+        backup_count = len(backups)
+        if backups:
+            latest = backups[0]
+            latest_backup = {
+                "backup_id": latest.get("backup_id"),
+                "created_at": latest.get("created_at"),
+                "size_bytes": latest.get("size_bytes"),
+                "is_compressed": latest.get("is_compressed"),
+            }
+
+        latency_ms = round((time.perf_counter() - start) * 1000, 2)
+        status = STATUS_HEALTHY if (accessible and writable) else STATUS_DEGRADED
+        return {
+            "status": status,
+            "latency_ms": latency_ms,
+            "directory": str(backup_dir),
+            "accessible": accessible,
+            "writable": writable,
+            "total_backups": backup_count,
+            "retention_count": settings.BACKUP_RETENTION_COUNT,
+            "latest_backup": latest_backup,
+        }
+    except Exception as e:
+        latency_ms = round((time.perf_counter() - start) * 1000, 2)
+        return {
+            "status": STATUS_DEGRADED,
+            "latency_ms": latency_ms,
+            "directory": str(backup_dir),
+            "accessible": accessible,
+            "writable": writable,
+            "error": str(e),
+        }
+

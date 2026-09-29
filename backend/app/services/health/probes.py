@@ -18,6 +18,7 @@ from app.services.health.dependencies import (
     check_clamav,
     check_identity_provider,
     check_enterprise_adapters,
+    check_backup_subsystem,
 )
 
 
@@ -37,6 +38,8 @@ def get_system_health(db: Session) -> Dict[str, Any]:
     av_diag = check_clamav()
     id_diag = check_identity_provider()
     adapters_diag = check_enterprise_adapters()
+    backup_diag = check_backup_subsystem()
+    backup_status = "UP" if backup_diag.get("status") == STATUS_HEALTHY else "DEGRADED"
 
     # 2. Embedding provider
     try:
@@ -120,6 +123,7 @@ def get_system_health(db: Session) -> Dict[str, Any]:
             "workers": worker_status,
             "antivirus": av_status,
             "identity_provider": id_status,
+            "backup_subsystem": backup_status,
         },
         "identity_provider_type": id_diag.get("provider_type", "local"),
         "enterprise_adapters": adapters_diag,
@@ -133,6 +137,7 @@ def get_system_health(db: Session) -> Dict[str, Any]:
             "llm": llm_diag,
             "antivirus": av_diag,
             "identity_provider": id_diag,
+            "backup": backup_diag,
         },
     }
 

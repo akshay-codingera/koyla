@@ -48,6 +48,7 @@ from app.api.v1 import (
     topics,
     visuals,
     evidence,
+    backup,
 )
 
 app = FastAPI(title=settings.PROJECT_NAME)
@@ -154,6 +155,8 @@ app.include_router(reports.router, prefix=f"{settings.API_V1_STR}/reports", tags
 app.include_router(topics.router, prefix=f"{settings.API_V1_STR}/topics", tags=["topics"])
 app.include_router(visuals.router, prefix=f"{settings.API_V1_STR}/visuals", tags=["visuals"])
 app.include_router(evidence.router, prefix=f"{settings.API_V1_STR}/evidence", tags=["evidence"])
+app.include_router(backup.router, prefix=f"{settings.API_V1_STR}/admin/backup", tags=["backup"])
+app.include_router(backup.router, prefix=f"{settings.API_V1_STR}/backup", tags=["backup"])
 
 
 @app.get("/")

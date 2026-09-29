@@ -93,6 +93,14 @@ class Settings(BaseSettings):
     DMS_TIMEOUT_SECONDS: float = 5.0
     DMS_VERIFY_TLS: bool = True
 
+    # Phase 9: Backup, Restore & Disaster Recovery Settings
+    BACKUP_DIR: str = "data/backups"
+    BACKUP_RETENTION_COUNT: int = 5
+    REPORTS_DIR: str = "data/reports"
+    BACKUP_INCLUDE_DOCUMENTS: bool = True
+    BACKUP_INCLUDE_REPORTS: bool = True
+    BACKUP_INCLUDE_DATABASE: bool = True
+
     @property
     def parsed_cors_origins(self) -> List[str]:
         if isinstance(self.CORS_ORIGINS, str):
