@@ -191,7 +191,8 @@ class RuleBasedExtractionProvider(BaseExtractionProvider):
 
     # Table column mapping keywords to domain fields
     TABLE_HEADER_RULES = [
-        {"field": "production_quantity", "category": "MINING", "type": "NUMBER", "unit": "MT", "keywords": ["production", "actual prod", "coal prod"]},
+        {"field": "washed_coal_production", "category": "MINING", "type": "NUMBER", "unit": "MT", "keywords": ["washed coal", "clean coal", "beneficiated coal", "धुला हुआ कोयला"]},
+        {"field": "production_quantity", "category": "MINING", "type": "NUMBER", "unit": "MT", "keywords": ["production", "actual prod", "coal prod", "raw coal", "उत्पादन", "कच्चा कोयला"]},
         {"field": "target_quantity", "category": "MINING", "type": "NUMBER", "unit": "MT", "keywords": ["target", "prod target", "planned prod"]},
         {"field": "dispatch_quantity", "category": "MINING", "type": "NUMBER", "unit": "MT", "keywords": ["dispatch", "offtake"]},
         {"field": "stripping_ratio", "category": "MINING", "type": "NUMBER", "unit": "m3/tonne", "keywords": ["stripping ratio", "sr (ob:coal)", "s.r."]},
@@ -203,8 +204,9 @@ class RuleBasedExtractionProvider(BaseExtractionProvider):
         {"field": "drilling_metreage", "category": "GEOLOGY", "type": "NUMBER", "unit": "m", "keywords": ["drilling depth", "metreage", "meterage", "depth (m)"]},
         {"field": "coal_grade", "category": "GEOLOGY", "type": "STRING", "unit": None, "keywords": ["grade", "coal grade"]},
         {"field": "gcv", "category": "GEOLOGY", "type": "NUMBER", "unit": "kcal/kg", "keywords": ["gcv", "gross calorific value"]},
-        {"field": "ash_content", "category": "GEOLOGY", "type": "NUMBER", "unit": "%", "keywords": ["ash %", "ash content", "ash percent"]},
-        {"field": "seam", "category": "GEOLOGY", "type": "STRING", "unit": None, "keywords": ["seam", "seam name"]},
+        {"field": "ash_content", "category": "GEOLOGY", "type": "NUMBER", "unit": "%", "keywords": ["ash %", "ash content", "ash percent", "ash", "राख"]},
+        {"field": "moisture_content", "category": "GEOLOGY", "type": "NUMBER", "unit": "%", "keywords": ["moisture", "moisture %", "नमी"]},
+        {"field": "seam", "category": "GEOLOGY", "type": "STRING", "unit": None, "keywords": ["seam", "seam name", "सीम"]},
         {"field": "borehole_id", "category": "GEOLOGY", "type": "STRING", "unit": None, "keywords": ["borehole", "bh no", "bh id", "borehole no"]},
     ]
 
@@ -276,7 +278,7 @@ class RuleBasedExtractionProvider(BaseExtractionProvider):
             entity_col_name = None
             for idx, h in enumerate(headers):
                 h_clean = str(h).strip().lower()
-                if any(kw in h_clean for kw in ["mine", "project", "seam", "borehole", "block", "unit"]):
+                if any(kw in h_clean for kw in ["mine", "project", "seam", "borehole", "block", "unit", "खदान"]):
                     entity_col_idx = idx
                     entity_col_name = str(h).strip()
                     break
@@ -334,7 +336,8 @@ class RuleBasedExtractionProvider(BaseExtractionProvider):
                     if tbl_meta.get("sheet_name"):
                         sheet = tbl_meta["sheet_name"]
                         col_letter = chr(ord('A') + min(col_idx, 25))
-                        row_num = (getattr(row, "row_index", 1) or 1) + 1
+                        h_depth = int(tbl_meta.get("header_depth") or 1)
+                        row_num = (getattr(row, "row_index", 1) or 1) + h_depth
                         field_meta["sheet_name"] = sheet
                         field_meta["cell_coordinate"] = f"{col_letter}{row_num}"
                         field_meta["provenance_display"] = f"Sheet: '{sheet}', Cell: '{col_letter}{row_num}'"

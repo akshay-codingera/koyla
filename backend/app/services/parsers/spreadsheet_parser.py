@@ -1,18 +1,27 @@
+import logging
 import uuid
 from pathlib import Path
 from typing import List, Any, Optional
 import openpyxl
 from app.services.parsers.base import BaseParser, ParsedDocument, ParsedPage, ParsedTable
+from app.services.parsers.spreadsheet_headers import (
+    extract_merged_ranges_from_worksheet,
+    detect_header_depth,
+    propagate_hierarchical_headers,
+)
+
+logger = logging.getLogger("app.services.parsers.spreadsheet_parser")
 
 
 class SpreadsheetParser(BaseParser):
     """
     Hardened Spreadsheet Parser for Excel (.xlsx) workbooks.
     Features:
-    - Memory-conscious read_only streaming mode
+    - Multi-row merged-header detection and hierarchical propagation (Phase 11 P1-2)
+    - Memory-conscious read_only streaming mode with zip-based merge range fallback
     - Incremental sheet iteration without full DOM instantiation
     - Configurable chunk size for very large sheets
-    - Table provenance preservation across workbook sheets
+    - Table provenance and hierarchical header metadata preservation
     - Fallback to standard loader if read_only fails
     """
     DEFAULT_CHUNK_SIZE = 2000
@@ -42,7 +51,17 @@ class SpreadsheetParser(BaseParser):
                 sheet = wb[sheet_name]
                 page_num = s_idx + 1
 
+                # 1. Extract merged ranges for this worksheet
+                merged_ranges = extract_merged_ranges_from_worksheet(
+                    ws=sheet,
+                    file_path=file_path,
+                    sheet_name=sheet_name,
+                    sheet_idx=s_idx + 1
+                )
+
                 headers: Optional[List[str]] = None
+                raw_headers: Optional[List[str]] = None
+                header_depth: int = 1
                 current_chunk_rows: List[List[Any]] = []
                 sheet_tables: List[ParsedTable] = []
                 total_data_rows = 0
@@ -51,16 +70,56 @@ class SpreadsheetParser(BaseParser):
                 part_idx = 0
 
                 row_iter = sheet.iter_rows(values_only=True)
+
+                # 2. Peek initial non-empty rows to evaluate multi-row header structure
+                initial_non_empty_rows: List[List[Any]] = []
                 for row in row_iter:
-                    # Filter completely empty rows
-                    if not any(cell is not None for cell in row):
-                        continue
+                    if any(cell is not None for cell in row):
+                        initial_non_empty_rows.append(list(row))
+                        if len(initial_non_empty_rows) >= 12:
+                            break
 
-                    cleaned_row = [str(c).strip() if c is not None else "" for c in row]
+                if not initial_non_empty_rows:
+                    # Empty sheet
+                    pages.append(
+                        ParsedPage(
+                            page_number=page_num,
+                            text=f"Sheet: {sheet_name} (Empty)",
+                            ocr_applied=False,
+                            confidence=1.0,
+                            tables=[],
+                            metadata={
+                                "sheet_name": sheet_name,
+                                "empty": True,
+                                "read_only_mode": read_only_mode
+                            }
+                        )
+                    )
+                    continue
 
-                    if headers is None:
-                        headers = [h if h else f"Col_{i+1}" for i, h in enumerate(cleaned_row)]
-                        continue
+                # 3. Detect header depth and propagate hierarchical headers
+                header_depth = detect_header_depth(initial_non_empty_rows, merged_ranges)
+                header_slice = initial_non_empty_rows[:header_depth]
+                data_slice = initial_non_empty_rows[header_depth:]
+
+                headers, raw_headers = propagate_hierarchical_headers(
+                    header_rows=header_slice,
+                    merged_ranges=merged_ranges
+                )
+
+                logger.info(
+                    f"Parsed sheet '{sheet_name}': detected header depth {header_depth}, "
+                    f"{len(merged_ranges)} merged ranges. Columns: {headers}"
+                )
+
+                def append_data_row(row_cells: List[Any]):
+                    nonlocal total_data_rows, part_idx, current_chunk_rows, sheet_tables, all_tables
+                    cleaned_row = [str(c).strip() if c is not None else "" for c in row_cells]
+                    # Normalize length against headers
+                    if len(cleaned_row) < len(headers):
+                        cleaned_row = cleaned_row + [""] * (len(headers) - len(cleaned_row))
+                    elif len(cleaned_row) > len(headers):
+                        cleaned_row = cleaned_row[:len(headers)]
 
                     current_chunk_rows.append(cleaned_row)
                     total_data_rows += 1
@@ -88,26 +147,28 @@ class SpreadsheetParser(BaseParser):
                                 "part_number": part_idx,
                                 "logical_table_id": sheet_logical_id,
                                 "is_continuation": part_idx > 1,
-                                "read_only_mode": read_only_mode
+                                "read_only_mode": read_only_mode,
+                                "header_depth": header_depth,
+                                "has_hierarchical_headers": header_depth > 1,
+                                "hierarchical_headers": headers,
+                                "raw_headers": raw_headers,
+                                "merged_ranges_count": len(merged_ranges),
+                                "merged_ranges": [str(m) for m in merged_ranges]
                             }
                         )
                         sheet_tables.append(table_part)
                         all_tables.append(table_part)
                         current_chunk_rows = []
 
-                if headers is None:
-                    # Empty sheet
-                    pages.append(
-                        ParsedPage(
-                            page_number=page_num,
-                            text=f"Sheet: {sheet_name} (Empty)",
-                            ocr_applied=False,
-                            confidence=1.0,
-                            tables=[],
-                            metadata={"sheet_name": sheet_name, "empty": True, "read_only_mode": read_only_mode}
-                        )
-                    )
-                    continue
+                # 4. Stream initial data slice
+                for r in data_slice:
+                    append_data_row(r)
+
+                # 5. Stream remaining rows from sheet iterator
+                for row in row_iter:
+                    if not any(cell is not None for cell in row):
+                        continue
+                    append_data_row(list(row))
 
                 # Add final / remaining chunk
                 if current_chunk_rows or not sheet_tables:
@@ -129,13 +190,19 @@ class SpreadsheetParser(BaseParser):
                             "part_number": part_idx,
                             "logical_table_id": sheet_logical_id,
                             "is_continuation": part_idx > 1,
-                            "read_only_mode": read_only_mode
+                            "read_only_mode": read_only_mode,
+                            "header_depth": header_depth,
+                            "has_hierarchical_headers": header_depth > 1,
+                            "hierarchical_headers": headers,
+                            "raw_headers": raw_headers,
+                            "merged_ranges_count": len(merged_ranges),
+                            "merged_ranges": [str(m) for m in merged_ranges]
                         }
                     )
                     sheet_tables.append(table_part)
                     all_tables.append(table_part)
 
-                # Generate structured sheet text summary
+                # Generate structured sheet text summary for search index
                 text_lines = [f"# Sheet: {sheet_name}", f"Headers: {' | '.join(headers)}", "Data:"]
                 for r in first_100_rows:
                     text_lines.append(" | ".join(r))
@@ -155,7 +222,9 @@ class SpreadsheetParser(BaseParser):
                             "sheet_name": sheet_name,
                             "row_count": total_data_rows,
                             "parts": part_idx,
-                            "read_only_mode": read_only_mode
+                            "read_only_mode": read_only_mode,
+                            "header_depth": header_depth,
+                            "has_hierarchical_headers": header_depth > 1
                         }
                     )
                 )
