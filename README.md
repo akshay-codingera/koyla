@@ -35,9 +35,9 @@ Every insight, number, trend, and generated statutory report is traceable to ver
 
 ---
 
-## 3. Implemented Modules (Phases 1 through 8.5)
+## 3. Implemented Modules & Enterprise Hardening (Phases 1 through H10)
 
-| Module | Route | Capabilities & Features |
+| Module / Hardening Layer | Route / Subsystem | Capabilities & Features |
 |---|---|---|
 | **Executive Dashboard** | `/dashboard` | Calculated KPI telemetry, document volumes, verification queue backlog, distribution across subsidiaries, and processing status. |
 | **Organization Network** | `/organizations` | Hierarchical governance tree (CIL $\to$ CMPDI $\to$ Regional Institutes $\to$ Subsidiaries $\to$ Areas $\to$ Mines) with strict server-side RBAC scoping. |
@@ -50,29 +50,41 @@ Every insight, number, trend, and generated statutory report is traceable to ver
 | **Audit & Governance** | `/audit` | Immutable SQL event ledger tracking user actions, hashes, timestamps, and organization scopes. |
 | **System Health & Telemetry** | `/system` | Real-time capability check probing all 9 subsystems (Backend, API, DB, pgvector, OCR, Embeddings, LLM, Topics, Reports). |
 | **Multi-Node Federation** | `/federation` | Simulated distributed query gateway across `node-cmpdi`, `node-secl`, and `node-ecl`. |
+| **Persistent Workers (H1)** | Celery / Redis | Background document processing, OCR, chunking, and topic training with task persistence and retry policies. |
+| **Streaming Ingestion (H2)** | `/api/v1/documents/upload` | Chunked 64KB multi-part streaming ingestion for large mining dossiers with memory bounding. |
+| **Lexical Search (H3)** | PostgreSQL tsvector/GIN | Server-side full-text search with ranking, stemming, and Boolean querying integrated into hybrid search. |
+| **Security Hardening (H4)** | App Middleware | ClamAV antivirus integration, HTTP security headers (CSP, HSTS, X-Frame-Options), and production secret enforcement. |
+| **Enterprise Identity (H5)** | `/api/v1/auth/ldap` | Abstract identity provider interface with pluggable LDAP/Active Directory adapter and local fallback. |
+| **Enterprise Adapters (H6)** | `/api/v1/adapters` | Modular adapters for SAP PM/MM, CoalNet production, and DMS with deterministic mock fallbacks. |
+| **Visual Classifier (H7)** | Feature Extractor | Computer-vision assisted geological diagram, map, and stratigraphic column classification. |
+| **Observability (H8)** | Structured Logging | JSON logging, `X-Request-ID` correlation, millisecond stage timing, and Prometheus `/metrics` endpoint. |
+| **Backup & Disaster Recovery (H9)** | `/api/v1/admin/backup` | Local/on-premise database and document backups with SHA-256 manifests, retention pruning, and clean-environment restoration. |
+| **Release Readiness & E2E (H10)** | Multi-Stage CI/CD | Full-lifecycle E2E testing validating all 5 operational flows across isolated clean PostgreSQL instances. |
 
 ---
 
 ## 4. Technology Stack
 
-- **Backend**: Python 3.11+, FastAPI, SQLAlchemy ORM, Pydantic v2, Uvicorn.
-- **Database & Search**: PostgreSQL 16 with `pgvector` extension; SQLite + NumPy cosine fallback for standalone local execution; FTS5 / BM25 lexical search.
+- **Backend**: Python 3.11+, FastAPI, SQLAlchemy ORM, Pydantic v2, Uvicorn, Celery, Redis.
+- **Database & Search**: PostgreSQL 16 with `pgvector` 0.8.6 extension; tsvector / GIN lexical search; hybrid RRF retrieval.
 - **Document Processing**: PyMuPDF (`fitz`), `python-docx`, `openpyxl`, OpenCV, Tesseract OCR.
 - **AI & Embeddings**: `sentence-transformers` (`BAAI/bge-small-en-v1.5`), scikit-learn, c-TF-IDF, Ollama / vLLM local daemon adapter.
+- **Security & Identity**: Passlib (bcrypt), PyJWT, python-ldap, ClamAV daemon connector, secure HTTP headers.
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons.
-- **Containerization**: Multi-stage Dockerfiles and Docker Compose.
+- **Containerization & Orchestration**: Docker, Docker Compose, Multi-stage production builds.
 
 ---
 
 ## 5. Quickstart & Local Execution
 
 ### Option A: Docker Compose (Recommended)
-Launch the complete stack (PostgreSQL + pgvector, Backend, Frontend) with a single command:
+Launch the complete stack (PostgreSQL + pgvector, Redis, Celery Worker, Backend API, Frontend Web) with a single command:
 ```bash
 docker compose up --build
 ```
 - Frontend Web App: `http://localhost:5173`
 - Backend REST API & Docs: `http://localhost:8000/docs`
+- Prometheus Metrics: `http://localhost:8000/metrics`
 - System Health Telemetry: `http://localhost:8000/api/v1/system/health`
 
 ### Option B: Local Workstation Execution
@@ -112,20 +124,17 @@ The database is pre-seeded with role-aware demonstration accounts:
 
 ## 7. Verification & Test Suite
 
-The entire backend test suite spans 12 suites and 144 automated tests:
+The entire backend test suite spans 28 test suites and 341 automated tests:
 ```bash
-cd backend
-pytest tests/ -v
+docker exec -e PYTHONPATH=. koyla-backend-1 pytest -q
 ```
-**Latest Regression Suite Results**:
-- `test_topic_hardening.py` (Phase 8.5 Hardening): **10 / 10 passed**
-- `test_topic_temporal.py` (Phase 8.3 Temporal Analytics): **26 / 26 passed**
-- `test_topic_engine.py` (Phase 8.2 Topic Engine): **11 / 11 passed**
-- `test_topic_foundation.py` (Phase 8.1 Topic Foundation): **10 / 10 passed**
-- `test_official_reports.py` (Phase 7 Statutory Reports): **14 / 14 passed**
-- Core Document, OCR & Extraction: **41 / 41 passed**
-- Retrieval, Q&A & Anti-Hallucination: **32 / 32 passed**
-- **Total: 144 / 144 passed (100% green, 0 failures, 0 regressions)**.
+**Latest Enterprise Test Matrix Results**:
+- **Baseline Foundation & Domain Extraction**: **205 passed**
+- **Hardening H1–H7 (Workers, Streaming, Lexical, Security, LDAP, Adapters, Visual)**: **80 passed**
+- **Hardening H8 (Observability & Stage Timing)**: **36 passed**
+- **Hardening H9 (Backup, Cryptographic Integrity & Clean PostgreSQL DR)**: **19 passed**
+- **Hardening H10 (Unified Full-Lifecycle Enterprise E2E)**: **1 passed**
+- **Overall Total: 341 / 341 passed (100% green, 0 failures, 0 errors, 0 regressions)**.
 
 ---
 
