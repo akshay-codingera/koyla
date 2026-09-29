@@ -51,6 +51,7 @@ from app.api.v1 import (
     evidence,
     backup,
     geology,
+    statutory_verification,
 )
 
 app = FastAPI(title=settings.PROJECT_NAME)
@@ -158,6 +159,7 @@ app.include_router(topics.router, prefix=f"{settings.API_V1_STR}/topics", tags=[
 app.include_router(visuals.router, prefix=f"{settings.API_V1_STR}/visuals", tags=["visuals"])
 app.include_router(evidence.router, prefix=f"{settings.API_V1_STR}/evidence", tags=["evidence"])
 app.include_router(geology.router, prefix=f"{settings.API_V1_STR}/geology", tags=["geology"])
+app.include_router(statutory_verification.router, prefix=f"{settings.API_V1_STR}/statutory", tags=["statutory"])
 app.include_router(backup.router, prefix=f"{settings.API_V1_STR}/admin/backup", tags=["backup"])
 app.include_router(backup.router, prefix=f"{settings.API_V1_STR}/backup", tags=["backup"])
 

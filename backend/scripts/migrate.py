@@ -112,6 +112,15 @@ def run_migrations():
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_borehole_strata_org_bh_order ON borehole_strata (organization_id, borehole_id, stratum_order);"))
             conn.commit()
 
+        # Statutory reserve verification migrations & indexes
+        if "statutory_reserve_verifications" in inspector.get_table_names():
+            print("Ensuring indexes on statutory_reserve_verifications...")
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_statutory_verif_org_status ON statutory_reserve_verifications (organization_id, status);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_statutory_verif_record_status ON statutory_reserve_verifications (reserve_record_id, status);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_statutory_verif_maker ON statutory_reserve_verifications (maker_user_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_statutory_verif_verifier ON statutory_reserve_verifications (verifier_user_id);"))
+            conn.commit()
+
         # Purge stale deterministic or legacy embeddings when transitioning to neural model
         from app.services.embedding import get_embedding_provider
         from app.db.database import SessionLocal

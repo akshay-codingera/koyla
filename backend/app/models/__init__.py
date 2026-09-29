@@ -12,7 +12,7 @@ from app.models.extraction import (
     ReconciliationGroup,
     ReconciliationCandidate,
 )
-from app.models.verification import VerificationTask
+from app.models.verification import VerificationTask, StatutoryReserveVerification
 from app.models.qa import QueryRecord, AnswerRecord, AnswerCitation
 from app.models.report import (
     ReportFormat,
@@ -51,6 +51,7 @@ __all__ = [
     "Table",
     "TableRow",
     "VerificationTask",
+    "StatutoryReserveVerification",
     "Chunk",
     "Embedding",
     "AuditEvent",
