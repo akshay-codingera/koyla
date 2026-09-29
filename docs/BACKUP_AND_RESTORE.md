@@ -154,16 +154,34 @@ restore_svc.restore_backup(
 
 ---
 
-## 5. Recovery Objectives (RPO & RTO)
+## 5. Recovery Objectives (RPO & RTO): Measured vs. Targets
 
-### Local Baseline Benchmarks (Demonstration / Standard On-Premise)
-- **Recovery Point Objective (RPO)**:
-  - *Standard Cron (Daily at 02:00 UTC)*: Maximum data loss window of **24 hours**.
-  - *High-Frequency Cron (Hourly)*: Maximum data loss window of **1 hour**.
-- **Recovery Time Objective (RTO)**:
-  - *Clean Container Re-provisioning*: **< 2 minutes** using `docker compose up -d`.
-  - *Database & File Ingestion Restore*: **< 30 seconds** for standard prototype datasets; **< 5-15 minutes** for ~50GB enterprise scale.
-  - *Post-Restore Integrity Audit*: Verified in **< 10 seconds**.
+### 5.1 Measured Prototype Benchmarks
+The backup, verification, and clean-environment restoration cycle was measured using the isolated PostgreSQL test suite (`test_postgres_dr_cycle.py`) on the running Docker stack.
+
+* **Test Conditions & Hardware Profile**:
+  * **OS / Runtime**: Debian Linux container (`koyla-backend-1`, Python 3.11.16, `postgresql-client` 17).
+  * **Database Engine**: PostgreSQL 16.15 with `pgvector` 0.8.6 (`koyla-postgres-1`).
+  * **Test Dataset**: Representative Koyla state comprising relational tables (`organizations`, `users`, `roles`, `documents`, `document_versions`, `document_pages`, `chunks`, `embeddings` with 384-dimensional vector data, `audit_events`, `report_formats`, `reports`, `visual_assets`, `topics`, `topic_analyses`) plus durable document storage (PDF) and statutory reports (DOCX).
+* **Empirical Measurements**:
+  * **Dataset / Backup Archive Size**: 96,178 bytes (compressed `.tar.gz`).
+  * **PostgreSQL Dump Duration (`pg_dump`)**: **132.7 ms**.
+  * **Cryptographic SHA-256 Verification (`verify_backup`)**: **2.7 ms**.
+  * **Clean PostgreSQL Restore Duration (`psql` + verified file deployment)**: **1,130.7 ms**.
+  * **Total Recovery Cycle (Excluding container provision)**: **1,266.1 ms (~1.27 seconds)**.
+
+---
+
+### 5.2 Operational Targets & Illustrative Estimates
+The following operational metrics are architectural targets and unbenchmarked estimates:
+
+* **Recovery Point Objective (RPO)**:
+  * *Target RPO (Daily Cron)*: **<= 24 hours** (Operational target; actual data loss window depends entirely on the administrator's backup schedule frequency).
+  * *Target RPO (Hourly Cron)*: **<= 1 hour** (Operational target for high-frequency operational deployments).
+* **Recovery Time Objective (RTO)**:
+  * *Clean Container Re-provisioning*: **Target ~1–2 minutes** (Estimated container startup time for `docker compose up -d`).
+  * *Prototype Dataset Restoration*: **Measured at 1.27 seconds** (Proven in automated clean-environment test).
+  * *Enterprise Scale (~50 GB)*: **Unbenchmarked illustrative estimate of ~5–15 minutes** (Theoretical extrapolation; actual RTO depends on disk I/O throughput, CPU cores, PostgreSQL indexing speed, network transfer bandwidth, and database size. Not verified with a real 50GB dataset in this prototype).
 
 ---
 

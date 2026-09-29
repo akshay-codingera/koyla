@@ -162,6 +162,15 @@ class PostgresBackupEngine:
         if not output_path.exists() or output_path.stat().st_size == 0:
             raise RuntimeError(f"pg_dump completed but output file '{output_path}' is missing or empty")
 
+        # Cross-version compatibility: neutralize settings introduced in newer pg_dump (e.g. v17 transaction_timeout)
+        try:
+            sql_text = output_path.read_text(encoding="utf-8", errors="ignore")
+            if "transaction_timeout" in sql_text:
+                cleaned_sql = re.sub(r"SET\s+transaction_timeout\s*=[^;]+;", "-- SET transaction_timeout ignored for cross-version compatibility", sql_text)
+                output_path.write_text(cleaned_sql, encoding="utf-8")
+        except Exception as e:
+            logger.debug("Cross-version SQL sanitization skipped: %s", e)
+
         logger.info("Database dump successfully created at '%s' (%d bytes)", output_path, output_path.stat().st_size)
         return output_path
 
