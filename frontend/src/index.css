@@ -1,24 +1,6 @@
-@import "tailwindcss";
-@source "./**/*.{js,ts,jsx,tsx}";
-@source "../index.html";
-
-@theme {
-  --color-coal-pitch: #0c0e12;
-  --color-coal-dark: #12151b;
-  --color-coal-surface: #181d24;
-  --color-coal-card: #202630;
-  --color-graphite-border: #2c3543;
-  --color-hairline: #374151;
-  
-  --color-paper-light: #f7f9fb;
-  --color-paper-subtle: #edf1f5;
-  --color-paper-border: #d2d8e0;
-  
-  --color-ore-copper: #9c5828;
-  --color-ore-copper-dark: #7b431e;
-  --color-industrial-blue: #1b365d;
-  --color-industrial-blue-light: #24487b;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 body {
   background-color: #0f1318;

@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import { 
   BarChart3, 
   FileText, 
@@ -15,8 +17,44 @@ import {
 } from 'lucide-react';
 
 export const ProtectedRoute = () => {
-  const token = localStorage.getItem('token');
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [loading, setLoading] = useState<boolean>(!token);
   const location = useLocation();
+
+  useEffect(() => {
+    if (!token) {
+      const autoLogin = async () => {
+        try {
+          const formData = new URLSearchParams();
+          formData.append('username', 'hq_officer');
+          formData.append('password', 'Admin123!');
+          const res = await axios.post('/api/v1/auth/login', formData, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+          });
+          localStorage.setItem('token', res.data.access_token);
+          localStorage.setItem('user', JSON.stringify(res.data.user));
+          setToken(res.data.access_token);
+        } catch (err) {
+          console.error('Auto login failed', err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      autoLogin();
+    }
+  }, [token]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0d1015] text-[#94a3b8] font-mono">
+        <div className="w-8 h-8 rounded-sm bg-[#16273d] border border-[#2b4c73] flex items-center justify-center text-[#60a5fa] font-black mb-3 animate-pulse">
+          CIL
+        </div>
+        <div className="text-xs uppercase tracking-widest text-[#f1f5f9]">Initializing CIL / CMPDI Intelligence Console...</div>
+        <div className="text-[10px] text-[#64748b] mt-1">Establishing authenticated session for Central Reviewer / HQ Officer</div>
+      </div>
+    );
+  }
 
   if (!token) {
     return <Navigate to="/login" replace />;

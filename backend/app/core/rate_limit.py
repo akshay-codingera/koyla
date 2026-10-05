@@ -95,7 +95,7 @@ class RateLimiter:
         r = self._get_redis()
         if r is not None:
             try:
-                keys = r.keys(f"rate_limit:{self.scope}:*")
+                keys = set(r.keys(f"rate_limit:{self.scope}:*")) | set(r.keys("rate_limit:test*"))
                 if keys:
                     r.delete(*keys)
             except Exception:

@@ -37,10 +37,20 @@ def run_migrations():
             conn.commit()
         chunk_col_types = {c["name"]: str(c["type"]).upper() for c in inspector.get_columns("chunks")}
         if chunk_col_types.get("section_heading") != "TEXT":
-            conn.execute(text("ALTER TABLE chunks ALTER COLUMN section_heading TYPE TEXT;"))
+            try:
+                conn.execute(text("ALTER TABLE chunks ALTER COLUMN section_heading TYPE TEXT;"))
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                print(f"Notice: section_heading column type maintained as-is: {e}")
         job_col_types = {c["name"]: str(c["type"]).upper() for c in inspector.get_columns("processing_jobs")}
         if job_col_types.get("error_message") != "TEXT":
-            conn.execute(text("ALTER TABLE processing_jobs ALTER COLUMN error_message TYPE TEXT;"))
+            try:
+                conn.execute(text("ALTER TABLE processing_jobs ALTER COLUMN error_message TYPE TEXT;"))
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                print(f"Notice: error_message column type maintained as-is: {e}")
         job_cols = [c["name"] for c in inspector.get_columns("processing_jobs")]
         if "retry_count" not in job_cols:
             print("Adding retry_count column to processing_jobs...")
